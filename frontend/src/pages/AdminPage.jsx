@@ -816,20 +816,6 @@ function TrainersManager({ trainers, onDelete, onRefresh, getAuthHeader, languag
             </div>
           </div>
 
-          {formData.image_url && (
-            <div>
-              <Label className="font-rajdhani text-gray-400 mb-2 block">
-                {language === 'de' ? 'Vorschau' : 'Preview'}
-              </Label>
-              <img 
-                src={formData.image_url} 
-                alt="Preview" 
-                className="w-32 h-32 object-cover border border-white/10"
-                onError={(e) => e.target.style.display = 'none'}
-              />
-            </div>
-          )}
-
           <div className="flex gap-4 pt-4">
             <Button 
               onClick={handleSave} 
