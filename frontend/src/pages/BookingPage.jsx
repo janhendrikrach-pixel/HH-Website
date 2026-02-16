@@ -165,16 +165,17 @@ export default function BookingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Date Picker */}
-              <div>
+              <div className="relative z-20">
                 <Label className="font-rajdhani text-gray-400 mb-2 block">
                   {t('booking.date')} *
                 </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
+                      type="button"
                       variant="outline"
                       data-testid="booking-date-picker"
-                      className="w-full justify-start text-left font-rajdhani bg-obsidian border-white/10 hover:border-gold text-white rounded-none"
+                      className="w-full justify-start text-left font-rajdhani bg-obsidian border-white/10 hover:border-gold hover:bg-obsidian text-white rounded-none h-10"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gold" />
                       {date ? format(date, 'PPP', { locale: language === 'de' ? de : enUS }) : (
@@ -184,7 +185,7 @@ export default function BookingPage() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-charcoal border-white/10" align="start">
+                  <PopoverContent className="w-auto p-0 bg-charcoal border-white/10 z-50" align="start" sideOffset={4}>
                     <Calendar
                       mode="single"
                       selected={date}
@@ -198,7 +199,7 @@ export default function BookingPage() {
               </div>
 
               {/* Experience Level */}
-              <div>
+              <div className="relative z-10">
                 <Label className="font-rajdhani text-gray-400 mb-2 block">
                   {t('booking.experience')} *
                 </Label>
@@ -208,21 +209,21 @@ export default function BookingPage() {
                 >
                   <SelectTrigger
                     data-testid="booking-experience-select"
-                    className="w-full bg-obsidian border-white/10 focus:border-gold text-white font-rajdhani rounded-none"
+                    className="w-full bg-obsidian border-white/10 focus:border-gold text-white font-rajdhani rounded-none h-10"
                   >
                     <SelectValue placeholder={language === 'de' ? 'Auswählen' : 'Select'} />
                   </SelectTrigger>
-                  <SelectContent className="bg-charcoal border-white/10">
-                    <SelectItem value="none" className="text-white font-rajdhani hover:bg-obsidian">
+                  <SelectContent className="bg-charcoal border-white/10 z-50" position="popper" sideOffset={4}>
+                    <SelectItem value="none" className="text-white font-rajdhani hover:bg-obsidian focus:bg-obsidian cursor-pointer">
                       {t('booking.experienceOptions.none')}
                     </SelectItem>
-                    <SelectItem value="beginner" className="text-white font-rajdhani hover:bg-obsidian">
+                    <SelectItem value="beginner" className="text-white font-rajdhani hover:bg-obsidian focus:bg-obsidian cursor-pointer">
                       {t('booking.experienceOptions.beginner')}
                     </SelectItem>
-                    <SelectItem value="intermediate" className="text-white font-rajdhani hover:bg-obsidian">
+                    <SelectItem value="intermediate" className="text-white font-rajdhani hover:bg-obsidian focus:bg-obsidian cursor-pointer">
                       {t('booking.experienceOptions.intermediate')}
                     </SelectItem>
-                    <SelectItem value="advanced" className="text-white font-rajdhani hover:bg-obsidian">
+                    <SelectItem value="advanced" className="text-white font-rajdhani hover:bg-obsidian focus:bg-obsidian cursor-pointer">
                       {t('booking.experienceOptions.advanced')}
                     </SelectItem>
                   </SelectContent>
