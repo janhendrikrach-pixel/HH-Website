@@ -563,6 +563,226 @@ async def admin_update_settings(settings: SiteSettingsBase, username: str = Depe
     )
     return settings_obj
 
+# ========== CMS ADMIN ENDPOINTS ==========
+
+# Pages Admin
+@api_router.get("/admin/pages", response_model=List[Page])
+async def admin_get_pages(username: str = Depends(verify_admin)):
+    pages = await db.pages.find({}, {"_id": 0}).sort("navigation_order", 1).to_list(100)
+    return pages
+
+@api_router.post("/admin/pages", response_model=Page)
+async def admin_create_page(page: PageBase, username: str = Depends(verify_admin)):
+    # Check if slug already exists
+    existing = await db.pages.find_one({"slug": page.slug})
+    if existing:
+        raise HTTPException(status_code=400, detail="Page with this slug already exists")
+    
+    page_obj = Page(**page.model_dump())
+    await db.pages.insert_one(page_obj.model_dump())
+    return page_obj
+
+@api_router.get("/admin/pages/{page_id}", response_model=Page)
+async def admin_get_page(page_id: str, username: str = Depends(verify_admin)):
+    page = await db.pages.find_one({"id": page_id}, {"_id": 0})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return Page(**page)
+
+@api_router.put("/admin/pages/{page_id}", response_model=Page)
+async def admin_update_page(page_id: str, page: PageBase, username: str = Depends(verify_admin)):
+    update_data = page.model_dump()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.pages.update_one(
+        {"id": page_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Page not found")
+    
+    updated = await db.pages.find_one({"id": page_id}, {"_id": 0})
+    return Page(**updated)
+
+@api_router.delete("/admin/pages/{page_id}")
+async def admin_delete_page(page_id: str, username: str = Depends(verify_admin)):
+    # Also delete all sections belonging to this page
+    page = await db.pages.find_one({"id": page_id})
+    if page:
+        await db.sections.delete_many({"page_id": page_id})
+    
+    result = await db.pages.delete_one({"id": page_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return {"status": "deleted"}
+
+# Sections Admin
+@api_router.get("/admin/sections")
+async def admin_get_all_sections(username: str = Depends(verify_admin)):
+    sections = await db.sections.find({}, {"_id": 0}).sort([("page_id", 1), ("order", 1)]).to_list(200)
+    return sections
+
+@api_router.get("/admin/sections/page/{page_id}")
+async def admin_get_page_sections(page_id: str, username: str = Depends(verify_admin)):
+    sections = await db.sections.find({"page_id": page_id}, {"_id": 0}).sort("order", 1).to_list(50)
+    return sections
+
+@api_router.post("/admin/sections", response_model=PageSection)
+async def admin_create_section(section: PageSectionBase, page_id: str = "home", username: str = Depends(verify_admin)):
+    section_obj = PageSection(**section.model_dump(), page_id=page_id)
+    await db.sections.insert_one(section_obj.model_dump())
+    return section_obj
+
+@api_router.get("/admin/sections/{section_id}", response_model=PageSection)
+async def admin_get_section(section_id: str, username: str = Depends(verify_admin)):
+    section = await db.sections.find_one({"id": section_id}, {"_id": 0})
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return PageSection(**section)
+
+@api_router.put("/admin/sections/{section_id}", response_model=PageSection)
+async def admin_update_section(section_id: str, section: PageSectionBase, username: str = Depends(verify_admin)):
+    update_data = section.model_dump()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.sections.update_one(
+        {"id": section_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Section not found")
+    
+    updated = await db.sections.find_one({"id": section_id}, {"_id": 0})
+    return PageSection(**updated)
+
+@api_router.delete("/admin/sections/{section_id}")
+async def admin_delete_section(section_id: str, username: str = Depends(verify_admin)):
+    result = await db.sections.delete_one({"id": section_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return {"status": "deleted"}
+
+@api_router.put("/admin/sections/reorder")
+async def admin_reorder_sections(section_orders: List[dict], username: str = Depends(verify_admin)):
+    """Reorder sections: expects [{id: "...", order: 0}, ...]"""
+    for item in section_orders:
+        await db.sections.update_one(
+            {"id": item["id"]},
+            {"$set": {"order": item["order"]}}
+        )
+    return {"status": "reordered"}
+
+# Initialize Homepage Sections
+@api_router.post("/admin/sections/init-homepage")
+async def admin_init_homepage_sections(username: str = Depends(verify_admin)):
+    """Initialize default homepage sections if none exist"""
+    existing = await db.sections.find_one({"page_id": "home"})
+    if existing:
+        return {"status": "already_initialized"}
+    
+    default_sections = [
+        PageSection(
+            page_id="home",
+            section_type="hero",
+            title_de="ENTDECKE DEN WRESTLER IN DIR",
+            title_en="DISCOVER THE WRESTLER WITHIN",
+            subtitle_de="Catch- und Wrestlingtraining vor den Toren Hannovers",
+            subtitle_en="Catch and wrestling training near Hannover",
+            background_image="https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=1920&q=80",
+            order=0,
+            settings={
+                "cta_text_de": "Probetraining buchen",
+                "cta_text_en": "Book Trial Training",
+                "cta_link": "/booking",
+                "secondary_text_de": "Mehr erfahren",
+                "secondary_text_en": "Learn More",
+                "secondary_link": "#about"
+            }
+        ),
+        PageSection(
+            page_id="home",
+            section_type="about",
+            title_de="ÜBER UNS",
+            title_en="ABOUT US",
+            subtitle_de="Headlock Headquarter",
+            subtitle_en="Headlock Headquarter",
+            description_de="In den Räumen der VBZ Nord GmbH in Hannover ist die Wrestling Schule des 'Catch- und Wrestlingverein Hannover e.V. (CWH e.V.)' beheimatet. Einmal wöchentlich, für ca. 4 Stunden bieten wir traditionelles Catch- und Wrestlingtraining an.",
+            description_en="Located in the premises of VBZ Nord GmbH in Hannover, the Wrestling School of 'Catch- und Wrestlingverein Hannover e.V. (CWH e.V.)' is home. Once a week, for about 4 hours, we offer traditional catch and wrestling training.",
+            background_image="https://images.unsplash.com/photo-1611338631743-b0362363f417?w=800&q=80",
+            order=1,
+            settings={
+                "show_stats": True,
+                "stats": [
+                    {"value": "30+", "label_de": "Jahre Erfahrung", "label_en": "Years Experience"},
+                    {"value": "500+", "label_de": "Trainierte Wrestler", "label_en": "Trained Wrestlers"},
+                    {"value": "50+", "label_de": "Gewonnene Titel", "label_en": "Titles Won"},
+                    {"value": "100%", "label_de": "Leidenschaft", "label_en": "Passion"}
+                ]
+            }
+        ),
+        PageSection(
+            page_id="home",
+            section_type="trainers",
+            title_de="UNSER TEAM",
+            title_en="OUR TEAM",
+            subtitle_de="Erfahrene Profis als deine Trainer",
+            subtitle_en="Experienced professionals as your trainers",
+            order=2,
+            settings={"show_achievements": True}
+        ),
+        PageSection(
+            page_id="home",
+            section_type="schedule",
+            title_de="TRAININGSZEITEN",
+            title_en="TRAINING SCHEDULE",
+            subtitle_de="Wann trainieren wir",
+            subtitle_en="When we train",
+            order=3
+        ),
+        PageSection(
+            page_id="home",
+            section_type="gallery",
+            title_de="GALERIE",
+            title_en="GALLERY",
+            subtitle_de="Einblicke in unser Training",
+            subtitle_en="Insights into our training",
+            order=4
+        ),
+        PageSection(
+            page_id="home",
+            section_type="instagram",
+            title_de="FOLGE UNS",
+            title_en="FOLLOW US",
+            subtitle_de="@headlock_headquarter",
+            subtitle_en="@headlock_headquarter",
+            order=5,
+            settings={"instagram_handle": "headlock_headquarter"}
+        ),
+        PageSection(
+            page_id="home",
+            section_type="reviews",
+            title_de="BEWERTUNGEN",
+            title_en="REVIEWS",
+            subtitle_de="Was unsere Schüler sagen",
+            subtitle_en="What our students say",
+            order=6
+        ),
+        PageSection(
+            page_id="home",
+            section_type="contact",
+            title_de="KONTAKT",
+            title_en="CONTACT",
+            subtitle_de="Schreib uns eine Nachricht",
+            subtitle_en="Send us a message",
+            order=7
+        )
+    ]
+    
+    for section in default_sections:
+        await db.sections.insert_one(section.model_dump())
+    
+    return {"status": "initialized", "sections_created": len(default_sections)}
+
 # Seed initial data
 @api_router.post("/admin/seed")
 async def seed_data(username: str = Depends(verify_admin)):
