@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../lib/LanguageContext';
+import { Button } from './ui/button';
 import { ChevronDown } from 'lucide-react';
 
 export const HeroSection = () => {
