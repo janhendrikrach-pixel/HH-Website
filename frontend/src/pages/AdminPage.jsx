@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Switch } from '../components/ui/switch';
 import { 
   Users, Calendar, Image, Mail, Settings, LogOut, Plus, Trash2, Edit, Eye, 
-  CheckCircle, XCircle, Clock, LayoutDashboard, Menu, X 
+  CheckCircle, XCircle, Clock, LayoutDashboard, Menu, X, Instagram
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
