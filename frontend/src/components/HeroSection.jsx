@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { ChevronDown } from 'lucide-react';
 
 export const HeroSection = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const scrollToAbout = () => {
     const element = document.getElementById('about');
