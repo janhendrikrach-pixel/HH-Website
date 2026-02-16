@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [gallery, setGallery] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [instagram, setInstagram] = useState([]);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(false);
 
