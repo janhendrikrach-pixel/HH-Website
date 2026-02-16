@@ -97,11 +97,12 @@ class InstagramPostBase(BaseModel):
     post_url: str
     thumbnail_url: str = ""
     caption: str = ""
-    post_type: str = "image"  # image, video, reel
+    post_type: str = "image"  # image, video, reel, embed
     is_story: bool = False
     story_expires_at: Optional[str] = None
     is_active: bool = True
     order: int = 0
+    embed_code: str = ""  # For Instagram embed HTML
 
 class InstagramPost(InstagramPostBase):
     model_config = ConfigDict(extra="ignore")
