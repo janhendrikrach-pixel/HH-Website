@@ -79,8 +79,8 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
   return (
     <Helmet>
       <html lang={currentLang} />
-      <title>{title}</title>
-      <meta name="description" content={description} />
+      <title>{titleString}</title>
+      <meta name="description" content={descriptionString} />
       <link rel="canonical" href={currentUrl} />
 
       {/* hreflang */}
@@ -90,8 +90,8 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
 
       {/* Open Graph */}
       <meta property="og:type" content="website" />
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
+      <meta property="og:title" content={titleString} />
+      <meta property="og:description" content={descriptionString} />
       <meta property="og:url" content={currentUrl} />
       <meta property="og:site_name" content="Headlock Headquarter" />
       <meta property="og:locale" content={currentLang === 'de' ? 'de_DE' : 'en_US'} />
@@ -101,8 +101,8 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
+      <meta name="twitter:title" content={titleString} />
+      <meta name="twitter:description" content={descriptionString} />
       <meta name="twitter:image" content="https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=1200&h=630&fit=crop" />
 
       {/* Additional SEO */}
