@@ -8,6 +8,7 @@ import { ScheduleSection } from '../components/ScheduleSection';
 import { GallerySection } from '../components/GallerySection';
 import { ContactSection } from '../components/ContactSection';
 import { ReviewsSection } from '../components/ReviewsSection';
+import { InstagramSection } from '../components/InstagramSection';
 
 export default function HomePage() {
   return (
@@ -19,6 +20,7 @@ export default function HomePage() {
         <TrainersSection />
         <ScheduleSection />
         <GallerySection />
+        <InstagramSection />
         <ReviewsSection />
         <ContactSection />
       </main>
