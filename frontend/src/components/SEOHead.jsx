@@ -28,9 +28,11 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
     }
   };
 
-  const current = seo[page]?.[language] || seo.home[language];
-  const title = customTitle || current.title;
-  const description = customDescription || current.description;
+  // Ensure language is valid, default to 'de' if undefined
+  const currentLang = language || 'de';
+  const current = seo[page]?.[currentLang] || seo.home[currentLang] || seo.home.de;
+  const title = customTitle || current?.title || 'Headlock Headquarter - Wrestling Schule Hannover';
+  const description = customDescription || current?.description || 'Professionelles Catch- und Wrestlingtraining in Hannover.';
   const siteUrl = window.location.origin;
   const currentUrl = window.location.href;
 
