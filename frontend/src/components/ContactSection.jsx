@@ -157,17 +157,26 @@ export const ContactSection = () => {
               </div>
             </div>
 
-            {/* Map Placeholder */}
-            <div className="mt-8 aspect-video bg-obsidian border border-white/5 flex items-center justify-center">
+            {/* Training Location */}
+            <div className="mt-8 p-6 bg-obsidian border border-white/5">
+              <h4 className="font-teko text-xl text-gold uppercase mb-2">
+                {language === 'de' ? 'Trainingsort' : 'Training Location'}
+              </h4>
+              <p className="font-rajdhani text-gray-400 mb-1">XFights Hannover Badenstedt</p>
+              <p className="font-rajdhani text-gray-500 text-sm">Badenstedter Straße 60, 30453 Hannover</p>
+            </div>
+
+            {/* Google Maps */}
+            <div className="mt-4 aspect-video bg-obsidian border border-white/5 overflow-hidden" data-testid="google-maps-embed">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2434.5!2d9.7556!3d52.4097!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNTLCsDI0JzM0LjkiTiA5wrA0NScyMC4yIkU!5e0!3m2!1sde!2sde!4v1234567890"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2434.8!2d9.6856!3d52.3697!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47b074c7e6b7e8a1%3A0x4c2e1a3b5e0b1e0a!2sBadenstedter+Stra%C3%9Fe+60%2C+30453+Hannover!5e0!3m2!1sde!2sde!4v1700000000000"
                 width="100%"
                 height="100%"
-                style={{ border: 0, filter: 'grayscale(100%) invert(90%)' }}
+                style={{ border: 0, filter: 'grayscale(80%) contrast(1.1) brightness(0.8)' }}
                 allowFullScreen=""
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Location Map"
+                title={language === 'de' ? 'Standort XFights Hannover' : 'Location XFights Hannover'}
               />
             </div>
           </div>
