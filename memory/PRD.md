@@ -33,9 +33,27 @@ Professional website for "Hedlock Headquarter" wrestling school to replace exist
 │   └── .env
 └── frontend/
     ├── src/
-    │   ├── components/ (sections + UI)
-    │   ├── pages/ (HomePage, AdminPage, BookingPage, DynamicPage)
-    │   └── lib/ (LanguageContext, translations, utils)
+    │   ├── components/
+    │   │   ├── admin/           # Refactored admin sub-components
+    │   │   │   ├── AdminLogin.jsx
+    │   │   │   ├── AdminDashboard.jsx
+    │   │   │   ├── AdminBookings.jsx
+    │   │   │   ├── AdminContacts.jsx
+    │   │   │   ├── TrainersManager.jsx
+    │   │   │   ├── GalleryManager.jsx
+    │   │   │   ├── ScheduleManager.jsx
+    │   │   │   ├── SettingsManager.jsx
+    │   │   │   └── InstagramManager.jsx
+    │   │   ├── ui/              # Shadcn UI components
+    │   │   ├── CMSManager.jsx
+    │   │   ├── ImageUpload.jsx
+    │   │   └── ... (section components)
+    │   ├── pages/
+    │   │   ├── AdminPage.jsx    # Slim orchestrator (~180 lines)
+    │   │   ├── HomePage.jsx
+    │   │   ├── BookingPage.jsx
+    │   │   └── DynamicPage.jsx
+    │   └── lib/
     └── .env
 ```
 
@@ -57,15 +75,15 @@ Professional website for "Hedlock Headquarter" wrestling school to replace exist
 - [x] Full CMS: Homepage section management + dynamic page creation
 - [x] Local file upload system (drag & drop)
 - [x] Site settings management
+- [x] **AdminPage.jsx refactored** from 1412 lines into 9 separate components
 
 ## Testing Status
 - Backend: 100% (25/25 tests passed)
 - Frontend: 100% (all flows verified)
-- Test reports: iteration_1.json, iteration_2.json
+- Test reports: iteration_1.json, iteration_2.json, iteration_3.json
 
 ## Backlog (P2 - Future)
-- [ ] AdminPage.jsx refactoring (>1200 lines, split into sub-components)
 - [ ] Live Instagram API integration (auto-fetch posts)
 - [ ] Cloud storage for images (AWS S3 / GCS)
 - [ ] SEO optimization
-- [ ] Performance optimization (yarn build timeout noted once)
+- [ ] Google Maps integration in contact section
