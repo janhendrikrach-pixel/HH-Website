@@ -1,95 +1,77 @@
 # Headlock Headquarter - Wrestling School Website
 
 ## Original Problem Statement
-Create a professional website for the Wrestling School "Headlock Headquarter" in Hannover with:
-- Dark & powerful design with black/gold color scheme
-- Course schedule/timetable
-- Online booking system for trial training
-- Trainer profiles
-- Gallery/Media section (admin-managed)
-- Contact form
-- Admin backend for content management
-- Bilingual support (German/English)
-- Instagram Feed Integration with Stories indicator
-- Local image uploads
+Create a professional website for the Wrestling School "Headlock Headquarter" in Hannover with full CMS capabilities.
 
-## User Personas
-1. **Prospective Students** - People interested in learning wrestling, looking to book trial training
-2. **Current Students** - Members checking schedule and updates
-3. **Admin/Staff** - Managing content, bookings, gallery, Instagram posts
+## Core Features
 
-## Core Requirements (Static)
-- ✅ Landing page with hero section
-- ✅ About section with school history
-- ✅ Trainer profiles with achievements (full CRUD with image upload)
-- ✅ Training schedule display
-- ✅ Photo gallery with lightbox and upload
-- ✅ Instagram Feed with Embed support and Stories
-- ✅ Contact form
-- ✅ Trial training booking form
-- ✅ Admin dashboard with full CRUD
-- ✅ Local image uploads (drag & drop)
-- ✅ Bilingual DE/EN support
+### Implemented ✅
+1. **Landing Page** - Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact
+2. **Booking System** - Trial training booking with form
+3. **Admin Dashboard** - Full content management
+4. **Bilingual** - German/English with language switcher
+5. **Image Uploads** - Local drag & drop uploads
+6. **Instagram Integration** - Embed support, Story indicators
 
-## What's Been Implemented (February 2026)
+### CMS System ✅ (NEW)
+- **Homepage Editor** - Edit all homepage sections (titles, subtitles, content, images)
+- **Section Management** - Add/edit/delete/reorder sections per page
+- **Page Creator** - Create unlimited new pages with custom URLs
+- **Section Types**: Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact, Text, CTA, Custom
+- **Templates**: Default, Landing Page, Simple (text only)
+- **Dynamic Routing** - Pages accessible at /page/{slug}
 
-### Frontend
-- **Home Page**: Hero, About, Trainers, Schedule, Gallery, Instagram Feed (with Embeds), Reviews, Contact
-- **Booking Page**: Full form with date picker and experience level
-- **Admin Dashboard**: Complete management for all content with image uploads
-- **Language Switcher**: DE/EN toggle with persistent state
-
-### Backend (FastAPI)
-- Public APIs: All content endpoints
-- Admin APIs: Full CRUD with HTTP Basic Auth
-- **Image Upload API**: `/api/admin/upload/{category}` - supports gallery, trainers, instagram
-- **Static Files**: `/api/uploads/` serves uploaded images
-- Supported formats: JPG, PNG, GIF, WebP (max 10MB)
-
-### Admin Features
-- **Trainer Management**: Full CRUD with drag & drop image upload
-- **Gallery Management**: Add/remove images with upload or URL
-- **Instagram Management**: 
-  - Add posts as thumbnails OR embedded iFrames
-  - Mark posts as Stories (with animated ring indicator)
-  - Upload custom thumbnails
-- **Booking/Contact Management**: View, confirm, delete
-
-### Design
-- Theme: "The Modern Gladiator" - Dark obsidian with gold accents
-- Fonts: Teko (headings), Rajdhani (body)
-- Effects: Gold glow, glass-obsidian panels, noise textures
+## Admin Navigation
+1. Dashboard - Overview stats
+2. Homepage - Edit homepage sections
+3. Seiten (Pages) - Create/manage pages
+4. Trainer - Manage trainers
+5. Trainingszeiten - Manage schedule
+6. Galerie - Manage gallery
+7. Instagram - Manage feed & stories
+8. Buchungen - View/manage bookings
+9. Nachrichten - View/manage contacts
+10. Einstellungen - Site settings
 
 ## Technical Stack
 - Frontend: React 19 + Tailwind CSS + Shadcn/UI
 - Backend: FastAPI + MongoDB
-- Storage: Local uploads in `/app/backend/uploads/`
-- Auth: HTTP Basic Auth for admin
+- Storage: Local uploads
+- Auth: HTTP Basic Auth
 
 ## Admin Credentials
+- URL: `/admin`
 - Username: `admin`
 - Password: `headlock2024`
 
-## File Upload Locations
-- Gallery: `/app/backend/uploads/gallery/`
-- Trainers: `/app/backend/uploads/trainers/`
-- Instagram: `/app/backend/uploads/instagram/`
+## API Endpoints
+
+### Public
+- GET `/api/pages` - List published pages
+- GET `/api/pages/{slug}` - Get page with sections
+- GET `/api/homepage` - Get homepage sections
+- GET `/api/sections/{page_id}` - Get page sections
+
+### Admin CMS
+- GET/POST `/api/admin/pages` - Manage pages
+- PUT/DELETE `/api/admin/pages/{id}` - Edit/delete page
+- GET/POST `/api/admin/sections` - Manage sections
+- PUT/DELETE `/api/admin/sections/{id}` - Edit/delete section
+- PUT `/api/admin/sections/reorder/{page_id}` - Reorder sections
+- POST `/api/admin/init-homepage` - Initialize default sections
 
 ## Prioritized Backlog
 
-### P0 (Critical) - DONE
-- ✅ All core features
-- ✅ Instagram Embed support
-- ✅ Local image uploads
+### P0 (Critical) - DONE ✅
+- All core website features
+- Full CMS with page/section management
+- Image uploads
+- Instagram embed
 
-### P1 (High Priority) - Next Phase
-- [ ] Email notifications for new bookings
-- [ ] SEO optimization (meta tags, sitemap)
+### P1 (High Priority)
+- [ ] Email notifications for bookings
+- [ ] SEO meta tags from page settings
 
-### P2 (Medium Priority)
-- [ ] PWA support for mobile
-- [ ] Image optimization/compression
-
-### P3 (Low Priority)
-- [ ] Member login area
-- [ ] Event calendar integration
+### P2 (Medium Priority)  
+- [ ] Rich text editor for content
+- [ ] Page preview before publish
