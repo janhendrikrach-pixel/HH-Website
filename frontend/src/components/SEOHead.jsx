@@ -41,7 +41,7 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
     '@type': 'SportsActivityLocation',
     name: 'Headlock Headquarter',
     alternateName: 'Wrestling Schule Hannover',
-    description: language === 'de'
+    description: currentLang === 'de'
       ? 'Professionelles Catch- und Wrestlingtraining in Hannover seit 1994'
       : 'Professional catch and wrestling training in Hannover since 1994',
     url: siteUrl,
