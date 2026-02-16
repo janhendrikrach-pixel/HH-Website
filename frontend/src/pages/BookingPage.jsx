@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import axios from 'axios';
+import { SEOHead } from '../components/SEOHead';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -73,6 +74,7 @@ export default function BookingPage() {
 
   return (
     <div data-testid="booking-page" className="min-h-screen bg-obsidian">
+      <SEOHead page="booking" />
       <Navbar />
       
       <main className="pt-32 pb-24">
