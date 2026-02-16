@@ -11,6 +11,7 @@ Create a professional website for the Wrestling School "Headlock Headquarter" in
 - Admin backend for content management
 - Bilingual support (German/English)
 - Instagram Feed Integration with Stories indicator
+- Local image uploads
 
 ## User Personas
 1. **Prospective Students** - People interested in learning wrestling, looking to book trial training
@@ -20,72 +21,75 @@ Create a professional website for the Wrestling School "Headlock Headquarter" in
 ## Core Requirements (Static)
 - ✅ Landing page with hero section
 - ✅ About section with school history
-- ✅ Trainer profiles with achievements (full CRUD in admin)
+- ✅ Trainer profiles with achievements (full CRUD with image upload)
 - ✅ Training schedule display
-- ✅ Photo gallery with lightbox
-- ✅ Instagram Feed section with Stories indicator
+- ✅ Photo gallery with lightbox and upload
+- ✅ Instagram Feed with Embed support and Stories
 - ✅ Contact form
 - ✅ Trial training booking form
-- ✅ Admin dashboard with full CRUD for all content
+- ✅ Admin dashboard with full CRUD
+- ✅ Local image uploads (drag & drop)
 - ✅ Bilingual DE/EN support
 
 ## What's Been Implemented (February 2026)
 
 ### Frontend
-- **Home Page**: Hero, About, Trainers, Schedule, Gallery, Instagram Feed, Reviews, Contact sections
-- **Booking Page**: Full form with date picker and experience level selection
-- **Admin Dashboard**: Complete management for trainers, schedule, gallery, Instagram, bookings, contacts, settings
+- **Home Page**: Hero, About, Trainers, Schedule, Gallery, Instagram Feed (with Embeds), Reviews, Contact
+- **Booking Page**: Full form with date picker and experience level
+- **Admin Dashboard**: Complete management for all content with image uploads
 - **Language Switcher**: DE/EN toggle with persistent state
 
 ### Backend (FastAPI)
-- Public APIs: `/api/trainers`, `/api/schedule`, `/api/gallery`, `/api/instagram`, `/api/instagram/stories`, `/api/settings`, `/api/bookings`, `/api/contacts`
-- Admin APIs: Full CRUD for all entities with HTTP Basic Auth
+- Public APIs: All content endpoints
+- Admin APIs: Full CRUD with HTTP Basic Auth
+- **Image Upload API**: `/api/admin/upload/{category}` - supports gallery, trainers, instagram
+- **Static Files**: `/api/uploads/` serves uploaded images
+- Supported formats: JPG, PNG, GIF, WebP (max 10MB)
 
 ### Admin Features
-- **Trainer Management**: Create, Edit, Delete trainers with all fields (Name, Title, Image, Experience, Bio DE/EN, Achievements)
-- **Instagram Management**: Add posts/stories, mark as story (with expiry), manage visibility
-- **Gallery Management**: Add/remove images
-- **Booking Management**: View, confirm, cancel bookings
-- **Contact Management**: View and mark as read
+- **Trainer Management**: Full CRUD with drag & drop image upload
+- **Gallery Management**: Add/remove images with upload or URL
+- **Instagram Management**: 
+  - Add posts as thumbnails OR embedded iFrames
+  - Mark posts as Stories (with animated ring indicator)
+  - Upload custom thumbnails
+- **Booking/Contact Management**: View, confirm, delete
 
 ### Design
 - Theme: "The Modern Gladiator" - Dark obsidian with gold accents
 - Fonts: Teko (headings), Rajdhani (body)
-- Effects: Gold glow, glass-obsidian panels, noise textures, shine animations
-
-## Prioritized Backlog
-
-### P0 (Critical) - DONE
-- ✅ Core website structure
-- ✅ All main features
-- ✅ Instagram Feed & Stories
-- ✅ Full Trainer CRUD
-
-### P1 (High Priority) - Next Phase
-- [ ] Image upload to cloud storage (currently URL-based)
-- [ ] Email notifications for new bookings
-- [ ] Live Instagram API integration (currently manual)
-
-### P2 (Medium Priority)
-- [ ] SEO optimization (meta tags, sitemap)
-- [ ] PWA support for mobile
-- [ ] Advanced analytics dashboard
-
-### P3 (Low Priority)
-- [ ] Member login area
-- [ ] Event calendar integration
-- [ ] Video gallery support
+- Effects: Gold glow, glass-obsidian panels, noise textures
 
 ## Technical Stack
 - Frontend: React 19 + Tailwind CSS + Shadcn/UI
 - Backend: FastAPI + MongoDB
+- Storage: Local uploads in `/app/backend/uploads/`
 - Auth: HTTP Basic Auth for admin
 
 ## Admin Credentials
 - Username: `admin`
 - Password: `headlock2024`
 
-## Contact Info
-- Address: Max-Müller-Straße 1, 30179 Hannover
-- Phone: 01523 3552397
-- Email: info@wrestling.schule
+## File Upload Locations
+- Gallery: `/app/backend/uploads/gallery/`
+- Trainers: `/app/backend/uploads/trainers/`
+- Instagram: `/app/backend/uploads/instagram/`
+
+## Prioritized Backlog
+
+### P0 (Critical) - DONE
+- ✅ All core features
+- ✅ Instagram Embed support
+- ✅ Local image uploads
+
+### P1 (High Priority) - Next Phase
+- [ ] Email notifications for new bookings
+- [ ] SEO optimization (meta tags, sitemap)
+
+### P2 (Medium Priority)
+- [ ] PWA support for mobile
+- [ ] Image optimization/compression
+
+### P3 (Low Priority)
+- [ ] Member login area
+- [ ] Event calendar integration
