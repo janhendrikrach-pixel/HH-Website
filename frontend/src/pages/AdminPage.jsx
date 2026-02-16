@@ -460,6 +460,17 @@ export default function AdminPage() {
                 />
               )}
 
+              {/* Instagram */}
+              {activeTab === 'instagram' && (
+                <InstagramManager
+                  posts={instagram}
+                  onDelete={(id) => handleDelete('instagram', id)}
+                  onRefresh={fetchAllData}
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                />
+              )}
+
               {/* Settings */}
               {activeTab === 'settings' && (
                 <SettingsManager
