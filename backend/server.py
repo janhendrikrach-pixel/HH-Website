@@ -84,6 +84,21 @@ class GalleryImageBase(BaseModel):
     is_active: bool = True
     order: int = 0
 
+class InstagramPostBase(BaseModel):
+    post_url: str
+    thumbnail_url: str = ""
+    caption: str = ""
+    post_type: str = "image"  # image, video, reel
+    is_story: bool = False
+    story_expires_at: Optional[str] = None
+    is_active: bool = True
+    order: int = 0
+
+class InstagramPost(InstagramPostBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 class GalleryImage(GalleryImageBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -149,6 +164,25 @@ async def get_schedule():
 async def get_gallery():
     images = await db.gallery.find({"is_active": True}, {"_id": 0}).sort("order", 1).to_list(100)
     return images
+
+@api_router.get("/instagram", response_model=List[InstagramPost])
+async def get_instagram_posts():
+    posts = await db.instagram.find({"is_active": True}, {"_id": 0}).sort("order", 1).to_list(50)
+    return posts
+
+@api_router.get("/instagram/stories")
+async def get_instagram_stories():
+    # Get active stories (not expired)
+    now = datetime.now(timezone.utc).isoformat()
+    stories = await db.instagram.find({
+        "is_story": True, 
+        "is_active": True,
+        "$or": [
+            {"story_expires_at": {"$gt": now}},
+            {"story_expires_at": None}
+        ]
+    }, {"_id": 0}).to_list(20)
+    return {"has_stories": len(stories) > 0, "count": len(stories), "stories": stories}
 
 @api_router.get("/settings", response_model=SiteSettings)
 async def get_settings():
@@ -265,6 +299,36 @@ async def admin_delete_gallery_image(image_id: str, username: str = Depends(veri
     result = await db.gallery.delete_one({"id": image_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Image not found")
+    return {"status": "deleted"}
+
+# Instagram Admin
+@api_router.get("/admin/instagram", response_model=List[InstagramPost])
+async def admin_get_instagram(username: str = Depends(verify_admin)):
+    posts = await db.instagram.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    return posts
+
+@api_router.post("/admin/instagram", response_model=InstagramPost)
+async def admin_create_instagram_post(post: InstagramPostBase, username: str = Depends(verify_admin)):
+    post_obj = InstagramPost(**post.model_dump())
+    await db.instagram.insert_one(post_obj.model_dump())
+    return post_obj
+
+@api_router.put("/admin/instagram/{post_id}", response_model=InstagramPost)
+async def admin_update_instagram_post(post_id: str, post: InstagramPostBase, username: str = Depends(verify_admin)):
+    result = await db.instagram.update_one(
+        {"id": post_id},
+        {"$set": post.model_dump()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
+    updated = await db.instagram.find_one({"id": post_id}, {"_id": 0})
+    return InstagramPost(**updated)
+
+@api_router.delete("/admin/instagram/{post_id}")
+async def admin_delete_instagram_post(post_id: str, username: str = Depends(verify_admin)):
+    result = await db.instagram.delete_one({"id": post_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
     return {"status": "deleted"}
 
 # Bookings Admin
