@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../lib/LanguageContext';
-import { Button } from './ui/button';
 import { ChevronDown } from 'lucide-react';
 
 export const HeroSection = () => {
@@ -23,7 +22,7 @@ export const HeroSection = () => {
       <div className="absolute inset-0 z-0">
         <img
           src="https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=1920&q=80"
-          alt="Wrestling"
+          alt={language === 'de' ? 'Wrestling-Training bei Headlock Headquarter in Hannover' : 'Wrestling training at Headlock Headquarter in Hannover'}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-obsidian/80 via-obsidian/60 to-obsidian" />
