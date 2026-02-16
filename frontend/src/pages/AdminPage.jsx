@@ -1141,18 +1141,17 @@ function InstagramManager({ posts, onDelete, onRefresh, getAuthHeader, language 
                 placeholder="https://www.instagram.com/p/..."
                 className="bg-obsidian border-white/10 text-white rounded-none"
               />
+              <p className="font-rajdhani text-gray-500 text-xs mt-1">
+                {language === 'de' ? 'Link zum Instagram-Post, Reel oder Video' : 'Link to Instagram post, reel or video'}
+              </p>
             </div>
-            <div>
-              <Label className="font-rajdhani text-gray-400 mb-2 block">
-                {language === 'de' ? 'Thumbnail URL (optional)' : 'Thumbnail URL (optional)'}
-              </Label>
-              <Input
-                value={formData.thumbnail_url}
-                onChange={(e) => setFormData(prev => ({ ...prev, thumbnail_url: e.target.value }))}
-                placeholder="https://..."
-                className="bg-obsidian border-white/10 text-white rounded-none"
-              />
-            </div>
+            <ImageUpload
+              value={formData.thumbnail_url}
+              onChange={(url) => setFormData(prev => ({ ...prev, thumbnail_url: url }))}
+              category="instagram"
+              getAuthHeader={getAuthHeader}
+              label={language === 'de' ? 'Thumbnail (optional)' : 'Thumbnail (optional)'}
+            />
           </div>
 
           <div>
@@ -1171,7 +1170,7 @@ function InstagramManager({ posts, onDelete, onRefresh, getAuthHeader, language 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="font-rajdhani text-gray-400 mb-2 block">
-                {language === 'de' ? 'Post-Typ' : 'Post Type'}
+                {language === 'de' ? 'Anzeige-Typ' : 'Display Type'}
               </Label>
               <Select
                 value={formData.post_type}
@@ -1181,12 +1180,26 @@ function InstagramManager({ posts, onDelete, onRefresh, getAuthHeader, language 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-charcoal border-white/10">
-                  <SelectItem value="image" className="text-white">Image</SelectItem>
-                  <SelectItem value="video" className="text-white">Video</SelectItem>
-                  <SelectItem value="reel" className="text-white">Reel</SelectItem>
-                  <SelectItem value="carousel" className="text-white">Carousel</SelectItem>
+                  <SelectItem value="image" className="text-white">
+                    <span className="flex items-center gap-2">
+                      <Image className="w-4 h-4" /> {language === 'de' ? 'Bild (Thumbnail)' : 'Image (Thumbnail)'}
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="video" className="text-white">Video (Thumbnail)</SelectItem>
+                  <SelectItem value="reel" className="text-white">Reel (Thumbnail)</SelectItem>
+                  <SelectItem value="embed" className="text-white">
+                    <span className="flex items-center gap-2">
+                      <Code className="w-4 h-4" /> Embed (iFrame)
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              <p className="font-rajdhani text-gray-500 text-xs mt-1">
+                {formData.post_type === 'embed' 
+                  ? (language === 'de' ? 'Post wird als interaktives Instagram-Embed angezeigt' : 'Post is shown as interactive Instagram embed')
+                  : (language === 'de' ? 'Post wird als Thumbnail mit Link angezeigt' : 'Post is shown as thumbnail with link')
+                }
+              </p>
             </div>
             <div>
               <Label className="font-rajdhani text-gray-400 mb-2 block">
