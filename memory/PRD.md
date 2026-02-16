@@ -1,77 +1,71 @@
 # Headlock Headquarter - Wrestling School Website
 
 ## Original Problem Statement
-Create a professional website for the Wrestling School "Headlock Headquarter" in Hannover with full CMS capabilities.
+Professional website for "Hedlock Headquarter" wrestling school to replace existing site at wrestling.schule. Uses information from Google Maps listing, existing website, and Instagram images.
 
-## Core Features
+## User Personas
+- **Admin**: Wrestling school owners/trainers who manage content, bookings, and messages
+- **Visitors**: Potential students looking for wrestling training information
+- **Language**: German (primary) / English (secondary)
 
-### Implemented ✅
-1. **Landing Page** - Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact
-2. **Booking System** - Trial training booking with form
-3. **Admin Dashboard** - Full content management
-4. **Bilingual** - German/English with language switcher
-5. **Image Uploads** - Local drag & drop uploads
-6. **Instagram Integration** - Embed support, Story indicators
+## Core Requirements
+- Dark & powerful design with gold accents
+- Bilingual (German/English)
+- Full backend CMS for content management
+- Image management through backend (local uploads)
+- Trainer CRUD management
+- Instagram feed integration (embed-based)
+- Booking system for trial training
+- Contact form
 
-### CMS System ✅ (NEW)
-- **Homepage Editor** - Edit all homepage sections (titles, subtitles, content, images)
-- **Section Management** - Add/edit/delete/reorder sections per page
-- **Page Creator** - Create unlimited new pages with custom URLs
-- **Section Types**: Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact, Text, CTA, Custom
-- **Templates**: Default, Landing Page, Simple (text only)
-- **Dynamic Routing** - Pages accessible at /page/{slug}
+## Tech Stack
+- **Backend**: FastAPI + Motor (async MongoDB)
+- **Frontend**: React + Tailwind CSS + Shadcn UI
+- **Database**: MongoDB
+- **Fonts**: Teko, Rajdhani (Google Fonts)
 
-## Admin Navigation
-1. Dashboard - Overview stats
-2. Homepage - Edit homepage sections
-3. Seiten (Pages) - Create/manage pages
-4. Trainer - Manage trainers
-5. Trainingszeiten - Manage schedule
-6. Galerie - Manage gallery
-7. Instagram - Manage feed & stories
-8. Buchungen - View/manage bookings
-9. Nachrichten - View/manage contacts
-10. Einstellungen - Site settings
-
-## Technical Stack
-- Frontend: React 19 + Tailwind CSS + Shadcn/UI
-- Backend: FastAPI + MongoDB
-- Storage: Local uploads
-- Auth: HTTP Basic Auth
+## Architecture
+```
+/app/
+├── backend/
+│   ├── uploads/ (gallery, instagram, trainers, pages)
+│   ├── server.py (all API endpoints)
+│   └── .env
+└── frontend/
+    ├── src/
+    │   ├── components/ (sections + UI)
+    │   ├── pages/ (HomePage, AdminPage, BookingPage, DynamicPage)
+    │   └── lib/ (LanguageContext, translations, utils)
+    └── .env
+```
 
 ## Admin Credentials
-- URL: `/admin`
 - Username: `admin`
 - Password: `headlock2024`
+- Auth: HTTP Basic Auth
 
-## API Endpoints
+## What's Been Implemented (Feb 2026)
+- [x] Full bilingual website (DE/EN) with dark theme + gold accents
+- [x] Homepage: Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact sections
+- [x] Admin Panel with multi-tab management interface
+- [x] Trainer CRUD (Create, Read, Update, Delete)
+- [x] Gallery CRUD with local image uploads
+- [x] Schedule management
+- [x] Instagram feed management (embed + custom posts)
+- [x] Booking system for trial training
+- [x] Contact form with message management
+- [x] Full CMS: Homepage section management + dynamic page creation
+- [x] Local file upload system (drag & drop)
+- [x] Site settings management
 
-### Public
-- GET `/api/pages` - List published pages
-- GET `/api/pages/{slug}` - Get page with sections
-- GET `/api/homepage` - Get homepage sections
-- GET `/api/sections/{page_id}` - Get page sections
+## Testing Status
+- Backend: 100% (25/25 tests passed)
+- Frontend: 100% (all flows verified)
+- Test reports: iteration_1.json, iteration_2.json
 
-### Admin CMS
-- GET/POST `/api/admin/pages` - Manage pages
-- PUT/DELETE `/api/admin/pages/{id}` - Edit/delete page
-- GET/POST `/api/admin/sections` - Manage sections
-- PUT/DELETE `/api/admin/sections/{id}` - Edit/delete section
-- PUT `/api/admin/sections/reorder/{page_id}` - Reorder sections
-- POST `/api/admin/init-homepage` - Initialize default sections
-
-## Prioritized Backlog
-
-### P0 (Critical) - DONE ✅
-- All core website features
-- Full CMS with page/section management
-- Image uploads
-- Instagram embed
-
-### P1 (High Priority)
-- [ ] Email notifications for bookings
-- [ ] SEO meta tags from page settings
-
-### P2 (Medium Priority)  
-- [ ] Rich text editor for content
-- [ ] Page preview before publish
+## Backlog (P2 - Future)
+- [ ] AdminPage.jsx refactoring (>1200 lines, split into sub-components)
+- [ ] Live Instagram API integration (auto-fetch posts)
+- [ ] Cloud storage for images (AWS S3 / GCS)
+- [ ] SEO optimization
+- [ ] Performance optimization (yarn build timeout noted once)
