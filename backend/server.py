@@ -261,6 +261,59 @@ async def get_settings():
         return default
     return SiteSettings(**settings)
 
+# ========== CMS PUBLIC ENDPOINTS ==========
+
+@api_router.get("/pages")
+async def get_pages():
+    """Get all published pages for navigation"""
+    pages = await db.pages.find({"is_published": True}, {"_id": 0}).sort("navigation_order", 1).to_list(50)
+    return pages
+
+@api_router.get("/pages/{slug}")
+async def get_page(slug: str):
+    """Get a specific page by slug"""
+    page = await db.pages.find_one({"slug": slug, "is_published": True}, {"_id": 0})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return page
+
+@api_router.get("/pages/{slug}/sections")
+async def get_page_sections(slug: str):
+    """Get all sections for a page"""
+    # First check if page exists
+    page = await db.pages.find_one({"slug": slug}, {"_id": 0})
+    page_id = page["id"] if page else slug
+    
+    sections = await db.sections.find(
+        {"page_id": page_id, "is_active": True}, 
+        {"_id": 0}
+    ).sort("order", 1).to_list(50)
+    return sections
+
+@api_router.get("/sections/{section_id}")
+async def get_section(section_id: str):
+    """Get a specific section by ID"""
+    section = await db.sections.find_one({"id": section_id}, {"_id": 0})
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return section
+
+@api_router.get("/homepage")
+async def get_homepage_content():
+    """Get all homepage sections in one call"""
+    sections = await db.sections.find(
+        {"page_id": "home", "is_active": True}, 
+        {"_id": 0}
+    ).sort("order", 1).to_list(50)
+    
+    # If no sections exist, return default structure
+    if not sections:
+        return {
+            "sections": [],
+            "default": True
+        }
+    return {"sections": sections, "default": False}
+
 @api_router.post("/bookings", response_model=Booking)
 async def create_booking(booking: BookingBase):
     booking_obj = Booking(**booking.model_dump())
