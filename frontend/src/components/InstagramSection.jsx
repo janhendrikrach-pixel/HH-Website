@@ -5,11 +5,65 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Instagram Embed Component
+const InstagramEmbed = ({ postUrl }) => {
+  const [loaded, setLoaded] = useState(false);
+  
+  useEffect(() => {
+    // Load Instagram embed script
+    if (window.instgrm) {
+      window.instgrm.Embeds.process();
+    } else {
+      const script = document.createElement('script');
+      script.src = '//www.instagram.com/embed.js';
+      script.async = true;
+      script.onload = () => {
+        if (window.instgrm) {
+          window.instgrm.Embeds.process();
+        }
+      };
+      document.body.appendChild(script);
+    }
+    setLoaded(true);
+  }, [postUrl]);
+
+  // Extract post ID from URL
+  const getEmbedUrl = (url) => {
+    // Handle different Instagram URL formats
+    const match = url.match(/instagram\.com\/(p|reel|tv)\/([^/?]+)/);
+    if (match) {
+      return `https://www.instagram.com/${match[1]}/${match[2]}/embed`;
+    }
+    return null;
+  };
+
+  const embedUrl = getEmbedUrl(postUrl);
+  
+  if (!embedUrl) {
+    return null;
+  }
+
+  return (
+    <div className="instagram-embed-container">
+      <iframe
+        src={embedUrl}
+        className="w-full border-0"
+        style={{ minHeight: '400px', maxWidth: '540px' }}
+        allowTransparency="true"
+        scrolling="no"
+        loading="lazy"
+        title="Instagram Post"
+      />
+    </div>
+  );
+};
+
 export const InstagramSection = () => {
   const { language } = useLanguage();
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState({ has_stories: false, count: 0 });
   const [loading, setLoading] = useState(true);
+  const [showEmbeds, setShowEmbeds] = useState(false);
 
   useEffect(() => {
     const fetchInstagram = async () => {
@@ -49,6 +103,10 @@ export const InstagramSection = () => {
   if (posts.length === 0 && !stories.has_stories) {
     return null;
   }
+
+  // Check if any posts have embed_code or are embed type
+  const embedPosts = posts.filter(p => p.post_type === 'embed' || p.embed_code);
+  const regularPosts = posts.filter(p => p.post_type !== 'embed' && !p.embed_code);
 
   return (
     <section
@@ -108,46 +166,68 @@ export const InstagramSection = () => {
           </div>
         )}
 
-        {/* Posts Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {posts.map((post, index) => (
-            <a
-              key={post.id}
-              href={post.post_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid={`instagram-post-${index}`}
-              className="group relative aspect-square overflow-hidden"
-            >
-              <img
-                src={post.thumbnail_url || 'https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=400'}
-                alt={post.caption || 'Instagram post'}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-              
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-obsidian/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <div className="text-center">
-                  {post.post_type === 'video' || post.post_type === 'reel' ? (
-                    <Play className="w-12 h-12 text-gold mx-auto mb-2" />
+        {/* Embedded Posts */}
+        {embedPosts.length > 0 && (
+          <div className="mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+              {embedPosts.map((post, index) => (
+                <div key={post.id} className="w-full max-w-md">
+                  {post.embed_code ? (
+                    <div 
+                      className="instagram-embed"
+                      dangerouslySetInnerHTML={{ __html: post.embed_code }}
+                    />
                   ) : (
-                    <Instagram className="w-12 h-12 text-gold mx-auto mb-2" />
+                    <InstagramEmbed postUrl={post.post_url} />
                   )}
-                  <span className="font-rajdhani text-white text-sm uppercase tracking-wider">
-                    {language === 'de' ? 'Auf Instagram ansehen' : 'View on Instagram'}
-                  </span>
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-              {/* Post Type Badge */}
-              {(post.post_type === 'video' || post.post_type === 'reel') && (
-                <div className="absolute top-3 right-3">
-                  <Play className="w-6 h-6 text-white drop-shadow-lg" />
+        {/* Regular Posts Grid (Thumbnails) */}
+        {regularPosts.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {regularPosts.map((post, index) => (
+              <a
+                key={post.id}
+                href={post.post_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid={`instagram-post-${index}`}
+                className="group relative aspect-square overflow-hidden"
+              >
+                <img
+                  src={post.thumbnail_url || 'https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=400'}
+                  alt={post.caption || 'Instagram post'}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-obsidian/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <div className="text-center">
+                    {post.post_type === 'video' || post.post_type === 'reel' ? (
+                      <Play className="w-12 h-12 text-gold mx-auto mb-2" />
+                    ) : (
+                      <Instagram className="w-12 h-12 text-gold mx-auto mb-2" />
+                    )}
+                    <span className="font-rajdhani text-white text-sm uppercase tracking-wider">
+                      {language === 'de' ? 'Auf Instagram ansehen' : 'View on Instagram'}
+                    </span>
+                  </div>
                 </div>
-              )}
-            </a>
-          ))}
-        </div>
+
+                {/* Post Type Badge */}
+                {(post.post_type === 'video' || post.post_type === 'reel') && (
+                  <div className="absolute top-3 right-3">
+                    <Play className="w-6 h-6 text-white drop-shadow-lg" />
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
         <div className="text-center mt-10">
