@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { ImageUpload } from '../components/ImageUpload';
+import { PagesManager, SectionsManager } from '../components/CMSManager';
 import { 
   Users, Calendar, Image, Mail, Settings, LogOut, Plus, Trash2, Edit, Eye, 
-  CheckCircle, XCircle, Clock, LayoutDashboard, Menu, X, Instagram, Code
+  CheckCircle, XCircle, Clock, LayoutDashboard, Menu, X, Instagram, Code,
+  FileText, Layout
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
