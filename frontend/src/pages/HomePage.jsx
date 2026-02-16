@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 import { HeroSection } from '../components/HeroSection';
 import { AboutSection } from '../components/AboutSection';
 import { TrainersSection } from '../components/TrainersSection';
@@ -13,6 +14,7 @@ import { InstagramSection } from '../components/InstagramSection';
 export default function HomePage() {
   return (
     <div data-testid="home-page" className="min-h-screen bg-obsidian">
+      <SEOHead page="home" />
       <Navbar />
       <main>
         <HeroSection />
