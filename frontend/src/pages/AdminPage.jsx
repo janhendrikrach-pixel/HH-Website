@@ -67,12 +67,13 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const headers = getAuthHeader();
-      const [trainersRes, scheduleRes, galleryRes, bookingsRes, contactsRes, settingsRes] = await Promise.all([
+      const [trainersRes, scheduleRes, galleryRes, bookingsRes, contactsRes, instagramRes, settingsRes] = await Promise.all([
         axios.get(`${API}/admin/trainers`, { headers }),
         axios.get(`${API}/admin/schedule`, { headers }),
         axios.get(`${API}/admin/gallery`, { headers }),
         axios.get(`${API}/admin/bookings`, { headers }),
         axios.get(`${API}/admin/contacts`, { headers }),
+        axios.get(`${API}/admin/instagram`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/settings`)
       ]);
       setTrainers(trainersRes.data);
