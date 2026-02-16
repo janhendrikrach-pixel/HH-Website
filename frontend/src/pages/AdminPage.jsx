@@ -81,6 +81,7 @@ export default function AdminPage() {
       setGallery(galleryRes.data);
       setBookings(bookingsRes.data);
       setContacts(contactsRes.data);
+      setInstagram(instagramRes.data);
       setSettings(settingsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
