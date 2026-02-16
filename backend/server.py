@@ -154,6 +154,64 @@ class SiteSettings(SiteSettingsBase):
     model_config = ConfigDict(extra="ignore")
     id: str = "site_settings"
 
+# ========== CMS MODELS ==========
+
+class SectionContentBase(BaseModel):
+    """Content block within a section - supports multiple content types"""
+    type: str = "text"  # text, image, button, stat, list
+    content_de: str = ""
+    content_en: str = ""
+    image_url: str = ""
+    link_url: str = ""
+    order: int = 0
+    style: dict = {}  # Custom CSS/styling options
+
+class SectionContent(SectionContentBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+class PageSectionBase(BaseModel):
+    """A section on a page (hero, about, etc.)"""
+    section_type: str  # hero, about, trainers, schedule, gallery, instagram, reviews, contact, custom
+    title_de: str = ""
+    title_en: str = ""
+    subtitle_de: str = ""
+    subtitle_en: str = ""
+    description_de: str = ""
+    description_en: str = ""
+    background_image: str = ""
+    background_color: str = ""
+    is_active: bool = True
+    order: int = 0
+    settings: dict = {}  # Section-specific settings
+    content_blocks: List[dict] = []  # List of content blocks
+
+class PageSection(PageSectionBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    page_id: str = "home"  # Which page this section belongs to
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class PageBase(BaseModel):
+    """A page on the website"""
+    slug: str  # URL slug (e.g., "about", "impressum")
+    title_de: str
+    title_en: str
+    meta_description_de: str = ""
+    meta_description_en: str = ""
+    is_published: bool = True
+    is_in_navigation: bool = True
+    navigation_order: int = 0
+    template: str = "default"  # default, landing, simple
+    custom_css: str = ""
+
+class Page(PageBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 # ========== PUBLIC ENDPOINTS ==========
 
 @api_router.get("/")
