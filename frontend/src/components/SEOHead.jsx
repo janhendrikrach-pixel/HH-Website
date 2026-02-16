@@ -77,7 +77,7 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
 
   return (
     <Helmet>
-      <html lang={language} />
+      <html lang={currentLang} />
       <title>{title}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={currentUrl} />
@@ -93,7 +93,7 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
       <meta property="og:description" content={description} />
       <meta property="og:url" content={currentUrl} />
       <meta property="og:site_name" content="Headlock Headquarter" />
-      <meta property="og:locale" content={language === 'de' ? 'de_DE' : 'en_US'} />
+      <meta property="og:locale" content={currentLang === 'de' ? 'de_DE' : 'en_US'} />
       <meta property="og:image" content="https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=1200&h=630&fit=crop" />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
@@ -107,7 +107,7 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
       {/* Additional SEO */}
       <meta name="robots" content="index, follow" />
       <meta name="author" content="Headlock Headquarter - CWH e.V." />
-      <meta name="keywords" content={language === 'de'
+      <meta name="keywords" content={currentLang === 'de'
         ? 'Wrestling, Catch Wrestling, Hannover, Wrestlingtraining, Probetraining, Wrestling Schule, CWH, Kampfsport'
         : 'Wrestling, Catch Wrestling, Hannover, Wrestling Training, Trial Training, Wrestling School, CWH, Martial Arts'
       } />
