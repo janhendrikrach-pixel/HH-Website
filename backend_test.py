@@ -4,7 +4,7 @@ import base64
 from datetime import datetime
 
 class WrestlingSchoolAPITester:
-    def __init__(self, base_url="https://grappling-hub-6.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://trainer-portal-51.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.admin_username = "admin"
         self.admin_password = "headlock2024"
