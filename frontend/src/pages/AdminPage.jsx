@@ -1,0 +1,698 @@
+import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../lib/LanguageContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { 
+  Users, Calendar, Image, Mail, Settings, LogOut, Plus, Trash2, Edit, Eye, 
+  CheckCircle, XCircle, Clock, LayoutDashboard, Menu, X 
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+export default function AdminPage() {
+  const { language } = useLanguage();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [authError, setAuthError] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Data states
+  const [trainers, setTrainers] = useState([]);
+  const [schedule, setSchedule] = useState([]);
+  const [gallery, setGallery] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  // Form states
+  const [editingItem, setEditingItem] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const getAuthHeader = () => {
+    const auth = btoa(`${credentials.username}:${credentials.password}`);
+    return { Authorization: `Basic ${auth}` };
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      await axios.get(`${API}/admin/verify`, { headers: getAuthHeader() });
+      setIsAuthenticated(true);
+      fetchAllData();
+    } catch (error) {
+      setAuthError(language === 'de' ? 'Ungültige Anmeldedaten' : 'Invalid credentials');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCredentials({ username: '', password: '' });
+  };
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      const headers = getAuthHeader();
+      const [trainersRes, scheduleRes, galleryRes, bookingsRes, contactsRes, settingsRes] = await Promise.all([
+        axios.get(`${API}/admin/trainers`, { headers }),
+        axios.get(`${API}/admin/schedule`, { headers }),
+        axios.get(`${API}/admin/gallery`, { headers }),
+        axios.get(`${API}/admin/bookings`, { headers }),
+        axios.get(`${API}/admin/contacts`, { headers }),
+        axios.get(`${API}/settings`)
+      ]);
+      setTrainers(trainersRes.data);
+      setSchedule(scheduleRes.data);
+      setGallery(galleryRes.data);
+      setBookings(bookingsRes.data);
+      setContacts(contactsRes.data);
+      setSettings(settingsRes.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const seedData = async () => {
+    try {
+      await axios.post(`${API}/admin/seed`, {}, { headers: getAuthHeader() });
+      fetchAllData();
+    } catch (error) {
+      console.error('Error seeding data:', error);
+    }
+  };
+
+  // CRUD Operations
+  const handleDelete = async (type, id) => {
+    if (!window.confirm(language === 'de' ? 'Wirklich löschen?' : 'Really delete?')) return;
+    try {
+      await axios.delete(`${API}/admin/${type}/${id}`, { headers: getAuthHeader() });
+      fetchAllData();
+    } catch (error) {
+      console.error('Error deleting:', error);
+    }
+  };
+
+  const handleUpdateBookingStatus = async (id, status) => {
+    try {
+      await axios.put(`${API}/admin/bookings/${id}/status?status=${status}`, {}, { headers: getAuthHeader() });
+      fetchAllData();
+    } catch (error) {
+      console.error('Error updating booking:', error);
+    }
+  };
+
+  const handleMarkContactRead = async (id) => {
+    try {
+      await axios.put(`${API}/admin/contacts/${id}/read`, {}, { headers: getAuthHeader() });
+      fetchAllData();
+    } catch (error) {
+      console.error('Error marking contact as read:', error);
+    }
+  };
+
+  // Login Screen
+  if (!isAuthenticated) {
+    return (
+      <div data-testid="admin-login" className="min-h-screen bg-obsidian flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-gold rounded flex items-center justify-center">
+                <span className="font-teko text-2xl text-black font-bold">HH</span>
+              </div>
+            </Link>
+            <h1 className="font-teko text-3xl text-white uppercase">Admin Login</h1>
+          </div>
+
+          <form onSubmit={handleLogin} className="bg-charcoal border border-white/5 p-8 space-y-6">
+            <div>
+              <Label className="font-rajdhani text-gray-400 mb-2 block">
+                {language === 'de' ? 'Benutzername' : 'Username'}
+              </Label>
+              <Input
+                data-testid="admin-username-input"
+                value={credentials.username}
+                onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
+                className="bg-obsidian border-white/10 focus:border-gold text-white rounded-none"
+              />
+            </div>
+            <div>
+              <Label className="font-rajdhani text-gray-400 mb-2 block">
+                {language === 'de' ? 'Passwort' : 'Password'}
+              </Label>
+              <Input
+                type="password"
+                data-testid="admin-password-input"
+                value={credentials.password}
+                onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                className="bg-obsidian border-white/10 focus:border-gold text-white rounded-none"
+              />
+            </div>
+            {authError && (
+              <p className="text-red-400 font-rajdhani text-sm">{authError}</p>
+            )}
+            <Button
+              type="submit"
+              data-testid="admin-login-btn"
+              className="w-full bg-gold hover:bg-gold-glow text-black font-teko uppercase tracking-wider py-6"
+            >
+              Login
+            </Button>
+          </form>
+
+          <div className="text-center mt-4">
+            <Link to="/" className="font-rajdhani text-gray-500 hover:text-gold text-sm transition-colors">
+              {language === 'de' ? 'Zurück zur Website' : 'Back to website'}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin Dashboard
+  const navItems = [
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { id: 'trainers', icon: Users, label: language === 'de' ? 'Trainer' : 'Trainers' },
+    { id: 'schedule', icon: Calendar, label: language === 'de' ? 'Trainingszeiten' : 'Schedule' },
+    { id: 'gallery', icon: Image, label: language === 'de' ? 'Galerie' : 'Gallery' },
+    { id: 'bookings', icon: Clock, label: language === 'de' ? 'Buchungen' : 'Bookings' },
+    { id: 'contacts', icon: Mail, label: language === 'de' ? 'Nachrichten' : 'Messages' },
+    { id: 'settings', icon: Settings, label: language === 'de' ? 'Einstellungen' : 'Settings' },
+  ];
+
+  return (
+    <div data-testid="admin-dashboard" className="min-h-screen bg-obsidian flex">
+      {/* Sidebar */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-charcoal border-r border-white/5 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300`}>
+        <div className="p-6 border-b border-white/5">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gold rounded flex items-center justify-center">
+              <span className="font-teko text-xl text-black font-bold">HH</span>
+            </div>
+            <span className="font-teko text-xl text-white uppercase">Admin</span>
+          </Link>
+        </div>
+
+        <nav className="p-4 space-y-2">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+              data-testid={`admin-nav-${item.id}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 font-rajdhani text-sm transition-colors duration-300 ${
+                activeTab === item.id 
+                  ? 'bg-gold/10 text-gold border-l-2 border-gold' 
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5">
+          <button
+            onClick={handleLogout}
+            data-testid="admin-logout-btn"
+            className="w-full flex items-center gap-3 px-4 py-3 font-rajdhani text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors duration-300"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 min-h-screen">
+        {/* Top Bar */}
+        <header className="h-16 bg-charcoal border-b border-white/5 flex items-center justify-between px-6">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden text-white"
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+          <h1 className="font-teko text-2xl text-white uppercase">
+            {navItems.find(i => i.id === activeTab)?.label}
+          </h1>
+          <div className="flex items-center gap-4">
+            <span className="font-rajdhani text-gray-400 text-sm hidden sm:block">
+              {credentials.username}
+            </span>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Dashboard */}
+              {activeTab === 'dashboard' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-charcoal border border-white/5 p-6">
+                      <Users className="w-8 h-8 text-gold mb-4" />
+                      <p className="font-teko text-3xl text-white">{trainers.length}</p>
+                      <p className="font-rajdhani text-gray-400 text-sm">Trainer</p>
+                    </div>
+                    <div className="bg-charcoal border border-white/5 p-6">
+                      <Clock className="w-8 h-8 text-gold mb-4" />
+                      <p className="font-teko text-3xl text-white">{bookings.filter(b => b.status === 'pending').length}</p>
+                      <p className="font-rajdhani text-gray-400 text-sm">{language === 'de' ? 'Offene Buchungen' : 'Pending Bookings'}</p>
+                    </div>
+                    <div className="bg-charcoal border border-white/5 p-6">
+                      <Mail className="w-8 h-8 text-gold mb-4" />
+                      <p className="font-teko text-3xl text-white">{contacts.filter(c => !c.is_read).length}</p>
+                      <p className="font-rajdhani text-gray-400 text-sm">{language === 'de' ? 'Ungelesene Nachrichten' : 'Unread Messages'}</p>
+                    </div>
+                    <div className="bg-charcoal border border-white/5 p-6">
+                      <Image className="w-8 h-8 text-gold mb-4" />
+                      <p className="font-teko text-3xl text-white">{gallery.length}</p>
+                      <p className="font-rajdhani text-gray-400 text-sm">{language === 'de' ? 'Galerie Bilder' : 'Gallery Images'}</p>
+                    </div>
+                  </div>
+
+                  {trainers.length === 0 && (
+                    <div className="bg-charcoal border border-white/5 p-8 text-center">
+                      <p className="font-rajdhani text-gray-400 mb-4">
+                        {language === 'de' ? 'Keine Daten vorhanden. Möchten Sie Beispieldaten laden?' : 'No data available. Would you like to load sample data?'}
+                      </p>
+                      <Button
+                        onClick={seedData}
+                        data-testid="seed-data-btn"
+                        className="bg-gold hover:bg-gold-glow text-black font-teko uppercase"
+                      >
+                        {language === 'de' ? 'Beispieldaten laden' : 'Load Sample Data'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Gallery Management */}
+              {activeTab === 'gallery' && (
+                <GalleryManager
+                  gallery={gallery}
+                  onDelete={(id) => handleDelete('gallery', id)}
+                  onRefresh={fetchAllData}
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                />
+              )}
+
+              {/* Bookings */}
+              {activeTab === 'bookings' && (
+                <div className="bg-charcoal border border-white/5 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/5 hover:bg-transparent">
+                        <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Name' : 'Name'}</TableHead>
+                        <TableHead className="text-gold font-teko uppercase">Email</TableHead>
+                        <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Datum' : 'Date'}</TableHead>
+                        <TableHead className="text-gold font-teko uppercase">Status</TableHead>
+                        <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Aktionen' : 'Actions'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bookings.map((booking) => (
+                        <TableRow key={booking.id} className="border-white/5">
+                          <TableCell className="font-rajdhani text-white">
+                            {booking.first_name} {booking.last_name}
+                          </TableCell>
+                          <TableCell className="font-rajdhani text-gray-400">{booking.email}</TableCell>
+                          <TableCell className="font-rajdhani text-gray-400">{booking.preferred_date}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 text-xs font-rajdhani ${
+                              booking.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                              booking.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                              'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {booking.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateBookingStatus(booking.id, 'confirmed')}
+                                className="p-1 text-green-400 hover:text-green-300"
+                                title="Confirm"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleUpdateBookingStatus(booking.id, 'cancelled')}
+                                className="p-1 text-red-400 hover:text-red-300"
+                                title="Cancel"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete('bookings', booking.id)}
+                                className="p-1 text-gray-400 hover:text-red-400"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {bookings.length === 0 && (
+                    <p className="text-center text-gray-500 font-rajdhani py-8">
+                      {language === 'de' ? 'Keine Buchungen vorhanden' : 'No bookings yet'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Contacts */}
+              {activeTab === 'contacts' && (
+                <div className="space-y-4">
+                  {contacts.map((contact) => (
+                    <div
+                      key={contact.id}
+                      className={`bg-charcoal border p-6 ${contact.is_read ? 'border-white/5' : 'border-gold/30'}`}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="font-teko text-xl text-white">{contact.name}</h4>
+                          <p className="font-rajdhani text-gold text-sm">{contact.email}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          {!contact.is_read && (
+                            <button
+                              onClick={() => handleMarkContactRead(contact.id)}
+                              className="p-2 text-green-400 hover:text-green-300"
+                              title="Mark as read"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete('contacts', contact.id)}
+                            className="p-2 text-gray-400 hover:text-red-400"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="font-rajdhani text-gray-300">{contact.message}</p>
+                      <p className="font-rajdhani text-gray-500 text-sm mt-4">
+                        {new Date(contact.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                  {contacts.length === 0 && (
+                    <p className="text-center text-gray-500 font-rajdhani py-8">
+                      {language === 'de' ? 'Keine Nachrichten vorhanden' : 'No messages yet'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Trainers */}
+              {activeTab === 'trainers' && (
+                <TrainersManager
+                  trainers={trainers}
+                  onDelete={(id) => handleDelete('trainers', id)}
+                  onRefresh={fetchAllData}
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                />
+              )}
+
+              {/* Schedule */}
+              {activeTab === 'schedule' && (
+                <ScheduleManager
+                  schedule={schedule}
+                  onDelete={(id) => handleDelete('schedule', id)}
+                  onRefresh={fetchAllData}
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                />
+              )}
+
+              {/* Settings */}
+              {activeTab === 'settings' && (
+                <SettingsManager
+                  settings={settings}
+                  onRefresh={fetchAllData}
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// Gallery Manager Component
+function GalleryManager({ gallery, onDelete, onRefresh, getAuthHeader, language }) {
+  const [newImage, setNewImage] = useState({ url: '', title: '', category: 'training', order: 0 });
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAdd = async () => {
+    try {
+      await axios.post(`${API}/admin/gallery`, newImage, { headers: getAuthHeader() });
+      setNewImage({ url: '', title: '', category: 'training', order: 0 });
+      setIsAdding(false);
+      onRefresh();
+    } catch (error) {
+      console.error('Error adding image:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="font-teko text-2xl text-white uppercase">
+          {language === 'de' ? 'Galerie verwalten' : 'Manage Gallery'}
+        </h2>
+        <Button
+          onClick={() => setIsAdding(true)}
+          data-testid="add-gallery-btn"
+          className="bg-gold hover:bg-gold-glow text-black font-teko uppercase"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          {language === 'de' ? 'Bild hinzufügen' : 'Add Image'}
+        </Button>
+      </div>
+
+      {isAdding && (
+        <div className="bg-charcoal border border-white/5 p-6 space-y-4">
+          <Input
+            placeholder="Image URL"
+            value={newImage.url}
+            onChange={(e) => setNewImage(prev => ({ ...prev, url: e.target.value }))}
+            className="bg-obsidian border-white/10 text-white rounded-none"
+          />
+          <Input
+            placeholder="Title"
+            value={newImage.title}
+            onChange={(e) => setNewImage(prev => ({ ...prev, title: e.target.value }))}
+            className="bg-obsidian border-white/10 text-white rounded-none"
+          />
+          <div className="flex gap-4">
+            <Button onClick={handleAdd} className="bg-gold text-black font-teko uppercase">
+              {language === 'de' ? 'Speichern' : 'Save'}
+            </Button>
+            <Button onClick={() => setIsAdding(false)} variant="outline" className="border-white/20 text-white font-teko uppercase">
+              {language === 'de' ? 'Abbrechen' : 'Cancel'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {gallery.map((image) => (
+          <div key={image.id} className="relative group">
+            <img src={image.url} alt={image.title} className="w-full aspect-square object-cover" />
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button
+                onClick={() => onDelete(image.id)}
+                className="p-2 bg-red-500 text-white rounded"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="font-rajdhani text-white text-sm mt-2">{image.title}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Trainers Manager Component
+function TrainersManager({ trainers, onDelete, onRefresh, getAuthHeader, language }) {
+  return (
+    <div className="bg-charcoal border border-white/5 overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-white/5 hover:bg-transparent">
+            <TableHead className="text-gold font-teko uppercase">Image</TableHead>
+            <TableHead className="text-gold font-teko uppercase">Name</TableHead>
+            <TableHead className="text-gold font-teko uppercase">Title</TableHead>
+            <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Erfahrung' : 'Experience'}</TableHead>
+            <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Aktionen' : 'Actions'}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {trainers.map((trainer) => (
+            <TableRow key={trainer.id} className="border-white/5">
+              <TableCell>
+                <img src={trainer.image_url} alt={trainer.name} className="w-12 h-12 object-cover" />
+              </TableCell>
+              <TableCell className="font-rajdhani text-white">{trainer.name}</TableCell>
+              <TableCell className="font-rajdhani text-gray-400">{trainer.title}</TableCell>
+              <TableCell className="font-rajdhani text-gray-400">{trainer.years_experience} {language === 'de' ? 'Jahre' : 'years'}</TableCell>
+              <TableCell>
+                <button
+                  onClick={() => onDelete(trainer.id)}
+                  className="p-1 text-gray-400 hover:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// Schedule Manager Component
+function ScheduleManager({ schedule, onDelete, onRefresh, getAuthHeader, language }) {
+  return (
+    <div className="bg-charcoal border border-white/5 overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-white/5 hover:bg-transparent">
+            <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Tag' : 'Day'}</TableHead>
+            <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Zeit' : 'Time'}</TableHead>
+            <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Titel' : 'Title'}</TableHead>
+            <TableHead className="text-gold font-teko uppercase">{language === 'de' ? 'Aktionen' : 'Actions'}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {schedule.map((item) => (
+            <TableRow key={item.id} className="border-white/5">
+              <TableCell className="font-rajdhani text-white">{language === 'de' ? item.day_de : item.day_en}</TableCell>
+              <TableCell className="font-rajdhani text-gray-400">{item.time_start} - {item.time_end}</TableCell>
+              <TableCell className="font-rajdhani text-gray-400">{language === 'de' ? item.title_de : item.title_en}</TableCell>
+              <TableCell>
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className="p-1 text-gray-400 hover:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// Settings Manager Component
+function SettingsManager({ settings, onRefresh, getAuthHeader, language }) {
+  const [form, setForm] = useState(settings);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm(settings);
+  }, [settings]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await axios.put(`${API}/admin/settings`, form, { headers: getAuthHeader() });
+      onRefresh();
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-charcoal border border-white/5 p-6 space-y-6 max-w-2xl">
+      <div>
+        <Label className="font-rajdhani text-gray-400 mb-2 block">{language === 'de' ? 'Adresse' : 'Address'}</Label>
+        <Input
+          value={form.address || ''}
+          onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
+          className="bg-obsidian border-white/10 text-white rounded-none"
+        />
+      </div>
+      <div>
+        <Label className="font-rajdhani text-gray-400 mb-2 block">{language === 'de' ? 'Telefon' : 'Phone'}</Label>
+        <Input
+          value={form.phone || ''}
+          onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+          className="bg-obsidian border-white/10 text-white rounded-none"
+        />
+      </div>
+      <div>
+        <Label className="font-rajdhani text-gray-400 mb-2 block">Email</Label>
+        <Input
+          value={form.email || ''}
+          onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+          className="bg-obsidian border-white/10 text-white rounded-none"
+        />
+      </div>
+      <div>
+        <Label className="font-rajdhani text-gray-400 mb-2 block">{language === 'de' ? 'Öffnungszeiten (DE)' : 'Opening Hours (DE)'}</Label>
+        <Input
+          value={form.opening_hours_de || ''}
+          onChange={(e) => setForm(prev => ({ ...prev, opening_hours_de: e.target.value }))}
+          className="bg-obsidian border-white/10 text-white rounded-none"
+        />
+      </div>
+      <div>
+        <Label className="font-rajdhani text-gray-400 mb-2 block">{language === 'de' ? 'Öffnungszeiten (EN)' : 'Opening Hours (EN)'}</Label>
+        <Input
+          value={form.opening_hours_en || ''}
+          onChange={(e) => setForm(prev => ({ ...prev, opening_hours_en: e.target.value }))}
+          className="bg-obsidian border-white/10 text-white rounded-none"
+        />
+      </div>
+      <Button
+        onClick={handleSave}
+        disabled={saving}
+        className="bg-gold hover:bg-gold-glow text-black font-teko uppercase"
+      >
+        {saving ? 'Saving...' : (language === 'de' ? 'Speichern' : 'Save')}
+      </Button>
+    </div>
+  );
+}
