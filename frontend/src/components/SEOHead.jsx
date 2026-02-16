@@ -83,10 +83,13 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
     }
   };
 
+  // For title, use a plain string directly without JSX expression to avoid helmet parsing issues
+  const pageTitle = titleString;
+  
   return (
     <Helmet>
       <html lang={currentLang} />
-      <title>{titleString}</title>
+      <title>{`${pageTitle}`}</title>
       <meta name="description" content={descriptionString} />
       <link rel="canonical" href={currentUrl} />
 
