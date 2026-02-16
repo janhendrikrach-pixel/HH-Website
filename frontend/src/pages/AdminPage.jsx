@@ -194,6 +194,7 @@ export default function AdminPage() {
     { id: 'trainers', icon: Users, label: language === 'de' ? 'Trainer' : 'Trainers' },
     { id: 'schedule', icon: Calendar, label: language === 'de' ? 'Trainingszeiten' : 'Schedule' },
     { id: 'gallery', icon: Image, label: language === 'de' ? 'Galerie' : 'Gallery' },
+    { id: 'instagram', icon: Instagram, label: 'Instagram' },
     { id: 'bookings', icon: Clock, label: language === 'de' ? 'Buchungen' : 'Bookings' },
     { id: 'contacts', icon: Mail, label: language === 'de' ? 'Nachrichten' : 'Messages' },
     { id: 'settings', icon: Settings, label: language === 'de' ? 'Einstellungen' : 'Settings' },
