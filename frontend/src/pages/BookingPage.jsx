@@ -75,7 +75,9 @@ export default function BookingPage() {
 
   return (
     <div data-testid="booking-page" className="min-h-screen bg-obsidian">
-      <SEOHead page="booking" />
+      <SEOErrorBoundary>
+        <SEOHead page="booking" />
+      </SEOErrorBoundary>
       <Navbar />
       
       <main className="pt-32 pb-24">
