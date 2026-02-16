@@ -341,6 +341,60 @@ async def admin_delete_instagram_post(post_id: str, username: str = Depends(veri
         raise HTTPException(status_code=404, detail="Post not found")
     return {"status": "deleted"}
 
+# ========== FILE UPLOAD ENDPOINTS ==========
+
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+def validate_image(filename: str, file_size: int) -> bool:
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {ALLOWED_EXTENSIONS}")
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Max size: 10MB")
+    return True
+
+@api_router.post("/admin/upload/{category}")
+async def upload_image(
+    category: str,
+    file: UploadFile = File(...),
+    username: str = Depends(verify_admin)
+):
+    if category not in ['gallery', 'trainers', 'instagram']:
+        raise HTTPException(status_code=400, detail="Invalid category")
+    
+    # Read file content
+    content = await file.read()
+    validate_image(file.filename, len(content))
+    
+    # Generate unique filename
+    ext = Path(file.filename).suffix.lower()
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    file_path = UPLOADS_DIR / category / unique_filename
+    
+    # Save file
+    with open(file_path, 'wb') as f:
+        f.write(content)
+    
+    # Return the URL path
+    url = f"/api/uploads/{category}/{unique_filename}"
+    return {"url": url, "filename": unique_filename}
+
+@api_router.delete("/admin/upload/{category}/{filename}")
+async def delete_uploaded_image(
+    category: str,
+    filename: str,
+    username: str = Depends(verify_admin)
+):
+    if category not in ['gallery', 'trainers', 'instagram']:
+        raise HTTPException(status_code=400, detail="Invalid category")
+    
+    file_path = UPLOADS_DIR / category / filename
+    if file_path.exists():
+        file_path.unlink()
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="File not found")
+
 # Bookings Admin
 @api_router.get("/admin/bookings", response_model=List[Booking])
 async def admin_get_bookings(username: str = Depends(verify_admin)):
