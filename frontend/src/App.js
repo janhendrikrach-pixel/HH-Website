@@ -5,6 +5,7 @@ import { Toaster } from "./components/ui/sonner";
 import HomePage from "./pages/HomePage";
 import BookingPage from "./pages/BookingPage";
 import AdminPage from "./pages/AdminPage";
+import DynamicPage from "./pages/DynamicPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/booking" element={<BookingPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/page/:slug" element={<DynamicPage />} />
           </Routes>
         </BrowserRouter>
         <Toaster />
