@@ -194,6 +194,8 @@ export default function AdminPage() {
   // Admin Dashboard
   const navItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { id: 'homepage', icon: Layout, label: language === 'de' ? 'Homepage' : 'Homepage' },
+    { id: 'pages', icon: FileText, label: language === 'de' ? 'Seiten' : 'Pages' },
     { id: 'trainers', icon: Users, label: language === 'de' ? 'Trainer' : 'Trainers' },
     { id: 'schedule', icon: Calendar, label: language === 'de' ? 'Trainingszeiten' : 'Schedule' },
     { id: 'gallery', icon: Image, label: language === 'de' ? 'Galerie' : 'Gallery' },
