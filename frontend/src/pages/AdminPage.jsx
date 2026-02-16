@@ -319,6 +319,23 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Homepage Sections */}
+              {activeTab === 'homepage' && (
+                <SectionsManager
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                  pageId="home"
+                />
+              )}
+
+              {/* Pages Management */}
+              {activeTab === 'pages' && (
+                <PagesManager
+                  getAuthHeader={getAuthHeader}
+                  language={language}
+                />
+              )}
+
               {/* Gallery Management */}
               {activeTab === 'gallery' && (
                 <GalleryManager
