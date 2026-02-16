@@ -31,9 +31,16 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
   // Ensure language is valid, default to 'de' if undefined
   const currentLang = language || 'de';
   const current = seo[page]?.[currentLang] || seo.home[currentLang] || seo.home.de;
-  // Make absolutely sure title is a plain string
-  const titleString = String(customTitle || current?.title || 'Headlock Headquarter - Wrestling Schule Hannover');
-  const descriptionString = String(customDescription || current?.description || 'Professionelles Catch- und Wrestlingtraining in Hannover.');
+  
+  // Ensure title and description are always strings
+  const defaultTitle = 'Headlock Headquarter - Wrestling Schule Hannover';
+  const defaultDescription = 'Professionelles Catch- und Wrestlingtraining in Hannover.';
+  
+  const rawTitle = customTitle || current?.title;
+  const rawDescription = customDescription || current?.description;
+  
+  const titleString = typeof rawTitle === 'string' && rawTitle.length > 0 ? rawTitle : defaultTitle;
+  const descriptionString = typeof rawDescription === 'string' && rawDescription.length > 0 ? rawDescription : defaultDescription;
   const siteUrl = window.location.origin;
   const currentUrl = window.location.href;
 
