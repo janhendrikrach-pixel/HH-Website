@@ -15,7 +15,6 @@ import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import axios from 'axios';
 import { SEOHead } from '../components/SEOHead';
-import SEOErrorBoundary from '../components/SEOErrorBoundary';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
