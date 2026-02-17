@@ -32,24 +32,20 @@ Professional website for "Hedlock Headquarter" wrestling school to replace exist
 │   ├── server.py (all API endpoints)
 │   └── .env
 └── frontend/
+    ├── public/
+    │   ├── index.html (SEO meta tags)
+    │   ├── robots.txt
+    │   └── sitemap.xml
     ├── src/
     │   ├── components/
-    │   │   ├── admin/           # Refactored admin sub-components
-    │   │   │   ├── AdminLogin.jsx
-    │   │   │   ├── AdminDashboard.jsx
-    │   │   │   ├── AdminBookings.jsx
-    │   │   │   ├── AdminContacts.jsx
-    │   │   │   ├── TrainersManager.jsx
-    │   │   │   ├── GalleryManager.jsx
-    │   │   │   ├── ScheduleManager.jsx
-    │   │   │   ├── SettingsManager.jsx
-    │   │   │   └── InstagramManager.jsx
-    │   │   ├── ui/              # Shadcn UI components
+    │   │   ├── admin/ (9 refactored admin sub-components)
+    │   │   ├── ui/ (Shadcn UI)
+    │   │   ├── SEOHead.jsx (dynamic SEO via DOM manipulation)
     │   │   ├── CMSManager.jsx
     │   │   ├── ImageUpload.jsx
     │   │   └── ... (section components)
     │   ├── pages/
-    │   │   ├── AdminPage.jsx    # Slim orchestrator (~180 lines)
+    │   │   ├── AdminPage.jsx (slim orchestrator)
     │   │   ├── HomePage.jsx
     │   │   ├── BookingPage.jsx
     │   │   └── DynamicPage.jsx
@@ -66,24 +62,18 @@ Professional website for "Hedlock Headquarter" wrestling school to replace exist
 - [x] Full bilingual website (DE/EN) with dark theme + gold accents
 - [x] Homepage: Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact sections
 - [x] Admin Panel with multi-tab management interface
-- [x] Trainer CRUD (Create, Read, Update, Delete)
-- [x] Gallery CRUD with local image uploads
-- [x] Schedule management
-- [x] Instagram feed management (embed + custom posts)
-- [x] Booking system for trial training
-- [x] Contact form with message management
+- [x] Trainer CRUD, Gallery CRUD, Schedule, Instagram, Bookings, Contacts management
 - [x] Full CMS: Homepage section management + dynamic page creation
 - [x] Local file upload system (drag & drop)
-- [x] Site settings management
-- [x] **AdminPage.jsx refactored** from 1412 lines into 9 separate components
+- [x] AdminPage.jsx refactored into 9 separate components
+- [x] **Google Maps embed** in Contact section (XFights Hannover Badenstedt, Badenstedter Str. 60)
+- [x] **SEO Optimization**: Meta tags, OG, Twitter Cards, JSON-LD (SportsActivityLocation), robots.txt, sitemap.xml, hreflang, canonical URLs, semantic HTML
 
 ## Testing Status
 - Backend: 100% (25/25 tests passed)
 - Frontend: 100% (all flows verified)
-- Test reports: iteration_1.json, iteration_2.json, iteration_3.json
+- Test reports: iteration_1-4
 
 ## Backlog (P2 - Future)
 - [ ] Live Instagram API integration (auto-fetch posts)
 - [ ] Cloud storage for images (AWS S3 / GCS)
-- [ ] SEO optimization
-- [ ] Google Maps integration in contact section
