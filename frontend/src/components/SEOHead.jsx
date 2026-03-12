@@ -56,7 +56,7 @@ export function SEOHead({ page = 'home', customTitle, customDescription }) {
     const description = customDescription || current.description;
     const siteUrl = window.location.origin;
     const currentUrl = window.location.href;
-    const ogImage = 'https://images.unsplash.com/photo-1623950851918-116ba38150d2?w=1200&h=630&fit=crop';
+    const ogImage = `${siteUrl}/logo.jpg`;
 
     // Title & lang
     document.title = title;

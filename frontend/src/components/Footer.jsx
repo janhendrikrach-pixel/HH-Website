@@ -13,9 +13,7 @@ export const Footer = () => {
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gold rounded flex items-center justify-center">
-                <span className="font-teko text-2xl text-black font-bold">HH</span>
-              </div>
+              <img src="/logo-200.png" alt="Headlock Headquarter Logo" className="w-12 h-12 object-contain" />
               <div>
                 <span className="font-teko text-xl text-white uppercase">Headlock</span>
                 <span className="font-teko text-xl text-gold uppercase ml-2">HQ</span>

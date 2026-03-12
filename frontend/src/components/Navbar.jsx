@@ -54,9 +54,7 @@ export const Navbar = () => {
             data-testid="nav-logo"
             className="flex items-center gap-3 group"
           >
-            <div className="w-12 h-12 bg-gold rounded flex items-center justify-center">
-              <span className="font-teko text-2xl text-black font-bold">HH</span>
-            </div>
+            <img src="/logo-200.png" alt="Headlock Headquarter Logo" className="w-12 h-12 object-contain" />
             <div className="hidden sm:block">
               <span className="font-teko text-2xl text-white uppercase tracking-wide group-hover:text-gold transition-colors duration-300">
                 Headlock

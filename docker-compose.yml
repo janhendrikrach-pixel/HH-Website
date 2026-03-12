@@ -1,0 +1,73 @@
+version: '3.8'
+
+# =============================================================================
+# Headlock Headquarter - Docker Compose
+# =============================================================================
+#
+# Verwendung:
+#   1. .env Datei im gleichen Verzeichnis anpassen
+#   2. docker compose up -d
+#   3. Website: http://localhost (oder deine Domain)
+#   4. Admin:   http://localhost/admin
+#
+# =============================================================================
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: headlock-db
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - headlock-net
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: headlock-backend
+    restart: always
+    env_file:
+      - ./backend/.env.docker
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - headlock-net
+
+  # Frontend (Nginx + React Build)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_BACKEND_URL: ${SITE_URL:-http://localhost}
+    container_name: headlock-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - uploads:/app/uploads:ro
+    depends_on:
+      - backend
+    networks:
+      - headlock-net
+
+volumes:
+  mongo-data:
+  uploads:
+
+networks:
+  headlock-net:
+    driver: bridge

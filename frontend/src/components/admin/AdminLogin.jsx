@@ -10,9 +10,7 @@ export function AdminLogin({ language, credentials, setCredentials, onLogin, aut
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-gold rounded flex items-center justify-center">
-              <span className="font-teko text-2xl text-black font-bold">HH</span>
-            </div>
+            <img src="/logo-200.png" alt="Headlock Headquarter Logo" className="w-16 h-16 object-contain" />
           </Link>
           <h1 className="font-teko text-3xl text-white uppercase">Admin Login</h1>
         </div>
