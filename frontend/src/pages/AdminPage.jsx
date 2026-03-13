@@ -222,7 +222,7 @@ export default function AdminPage() {
                 <TrainersManager trainers={trainers} onDelete={(id) => handleDelete('trainers', id)} onRefresh={fetchAllData} getAuthHeader={getAuthHeader} language={language} />
               )}
               {activeTab === 'schedule' && (
-                <ScheduleManager schedule={schedule} onDelete={(id) => handleDelete('schedule', id)} language={language} />
+                <ScheduleManager schedule={schedule} onDelete={(id) => handleDelete('schedule', id)} onRefresh={fetchAllData} getAuthHeader={getAuthHeader} language={language} />
               )}
               {activeTab === 'gallery' && (
                 <GalleryManager gallery={gallery} onDelete={(id) => handleDelete('gallery', id)} onRefresh={fetchAllData} getAuthHeader={getAuthHeader} language={language} />

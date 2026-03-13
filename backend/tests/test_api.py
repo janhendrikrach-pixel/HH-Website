@@ -382,6 +382,201 @@ class TestGalleryCRUD:
         print(f"✓ Gallery image deleted successfully")
 
 
+# ==================== SCHEDULE CRUD TESTS ====================
+
+class TestScheduleCRUD:
+    """Tests for schedule management - Full CRUD (NEW FEATURE)"""
+    
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Setup - store schedule ID for cleanup"""
+        self.schedule_id = None
+        yield
+        # Cleanup - delete test schedule item if created
+        if self.schedule_id:
+            requests.delete(f"{BASE_URL}/api/admin/schedule/{self.schedule_id}", headers=get_auth_header())
+    
+    def test_create_schedule_item(self):
+        """Test creating a new schedule entry"""
+        schedule_data = {
+            "day_de": "Mittwoch",
+            "day_en": "Wednesday",
+            "time_start": "18:00",
+            "time_end": "20:00",
+            "title_de": "TEST_Abendtraining",
+            "title_en": "TEST_Evening Training",
+            "description_de": "Abendtraining für Fortgeschrittene",
+            "description_en": "Evening training for advanced students",
+            "is_active": True
+        }
+        response = requests.post(f"{BASE_URL}/api/admin/schedule", json=schedule_data, headers=get_auth_header())
+        assert response.status_code == 200
+        data = response.json()
+        assert data["day_de"] == schedule_data["day_de"]
+        assert data["day_en"] == schedule_data["day_en"]
+        assert data["time_start"] == schedule_data["time_start"]
+        assert data["time_end"] == schedule_data["time_end"]
+        assert data["title_de"] == schedule_data["title_de"]
+        assert data["title_en"] == schedule_data["title_en"]
+        assert "id" in data
+        self.schedule_id = data["id"]
+        print(f"✓ Schedule item created: {data['id']}")
+        
+        # Verify schedule item appears in admin list
+        admin_response = requests.get(f"{BASE_URL}/api/admin/schedule", headers=get_auth_header())
+        schedule_items = admin_response.json()
+        found = any(s["id"] == self.schedule_id for s in schedule_items)
+        assert found, "Created schedule item should be in admin list"
+        print(f"✓ Schedule item verified in admin list")
+        
+        # Verify active schedule item appears in public list
+        public_response = requests.get(f"{BASE_URL}/api/schedule")
+        public_items = public_response.json()
+        found_public = any(s["id"] == self.schedule_id for s in public_items)
+        assert found_public, "Active schedule item should be in public list"
+        print(f"✓ Active schedule item verified in public list")
+    
+    def test_create_inactive_schedule_item(self):
+        """Test creating an inactive schedule entry - should not appear in public list"""
+        schedule_data = {
+            "day_de": "Freitag",
+            "day_en": "Friday",
+            "time_start": "10:00",
+            "time_end": "12:00",
+            "title_de": "TEST_Inactive Training",
+            "title_en": "TEST_Inactive Training",
+            "description_de": "Inaktives Training",
+            "description_en": "Inactive training",
+            "is_active": False
+        }
+        response = requests.post(f"{BASE_URL}/api/admin/schedule", json=schedule_data, headers=get_auth_header())
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_active"] == False
+        self.schedule_id = data["id"]
+        print(f"✓ Inactive schedule item created: {data['id']}")
+        
+        # Verify inactive item is in admin list but NOT in public list
+        admin_response = requests.get(f"{BASE_URL}/api/admin/schedule", headers=get_auth_header())
+        schedule_items = admin_response.json()
+        found_admin = any(s["id"] == self.schedule_id for s in schedule_items)
+        assert found_admin, "Inactive item should be in admin list"
+        
+        public_response = requests.get(f"{BASE_URL}/api/schedule")
+        public_items = public_response.json()
+        found_public = any(s["id"] == self.schedule_id for s in public_items)
+        assert not found_public, "Inactive schedule item should NOT be in public list"
+        print(f"✓ Inactive schedule item correctly hidden from public")
+    
+    def test_update_schedule_item(self):
+        """Test updating a schedule entry"""
+        # Create initial schedule item
+        initial_data = {
+            "day_de": "Montag",
+            "day_en": "Monday",
+            "time_start": "08:00",
+            "time_end": "10:00",
+            "title_de": "TEST_Original",
+            "title_en": "TEST_Original",
+            "description_de": "Original description",
+            "description_en": "Original description",
+            "is_active": True
+        }
+        create_resp = requests.post(f"{BASE_URL}/api/admin/schedule", json=initial_data, headers=get_auth_header())
+        assert create_resp.status_code == 200
+        self.schedule_id = create_resp.json()["id"]
+        
+        # Update the schedule item
+        updated_data = {
+            "day_de": "Dienstag",
+            "day_en": "Tuesday",
+            "time_start": "14:00",
+            "time_end": "16:00",
+            "title_de": "TEST_Updated Title",
+            "title_en": "TEST_Updated Title EN",
+            "description_de": "Updated description DE",
+            "description_en": "Updated description EN",
+            "is_active": True
+        }
+        update_resp = requests.put(f"{BASE_URL}/api/admin/schedule/{self.schedule_id}", json=updated_data, headers=get_auth_header())
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert data["day_de"] == "Dienstag"
+        assert data["day_en"] == "Tuesday"
+        assert data["time_start"] == "14:00"
+        assert data["time_end"] == "16:00"
+        assert data["title_de"] == "TEST_Updated Title"
+        print(f"✓ Schedule item updated successfully")
+        
+        # Verify update persisted via GET
+        admin_response = requests.get(f"{BASE_URL}/api/admin/schedule", headers=get_auth_header())
+        schedule_items = admin_response.json()
+        updated_item = next((s for s in schedule_items if s["id"] == self.schedule_id), None)
+        assert updated_item is not None
+        assert updated_item["day_de"] == "Dienstag"
+        assert updated_item["time_start"] == "14:00"
+        print(f"✓ Schedule update verified via GET")
+    
+    def test_delete_schedule_item(self):
+        """Test deleting a schedule entry"""
+        # Create schedule item to delete
+        schedule_data = {
+            "day_de": "Donnerstag",
+            "day_en": "Thursday",
+            "time_start": "19:00",
+            "time_end": "21:00",
+            "title_de": "TEST_Delete Me",
+            "title_en": "TEST_Delete Me",
+            "description_de": "To be deleted",
+            "description_en": "To be deleted",
+            "is_active": True
+        }
+        create_resp = requests.post(f"{BASE_URL}/api/admin/schedule", json=schedule_data, headers=get_auth_header())
+        schedule_id = create_resp.json()["id"]
+        
+        # Delete the schedule item
+        delete_resp = requests.delete(f"{BASE_URL}/api/admin/schedule/{schedule_id}", headers=get_auth_header())
+        assert delete_resp.status_code == 200
+        assert delete_resp.json()["status"] == "deleted"
+        print(f"✓ Schedule item deleted")
+        
+        # Verify item is removed from admin list
+        admin_response = requests.get(f"{BASE_URL}/api/admin/schedule", headers=get_auth_header())
+        schedule_items = admin_response.json()
+        found = any(s["id"] == schedule_id for s in schedule_items)
+        assert not found, "Deleted schedule item should not be in list"
+        print(f"✓ Deleted schedule item verified removed from list")
+    
+    def test_delete_nonexistent_schedule_item(self):
+        """Test deleting a schedule item that doesn't exist"""
+        delete_resp = requests.delete(f"{BASE_URL}/api/admin/schedule/nonexistent-id-12345", headers=get_auth_header())
+        assert delete_resp.status_code == 404
+        print(f"✓ Delete nonexistent item correctly returns 404")
+    
+    def test_update_nonexistent_schedule_item(self):
+        """Test updating a schedule item that doesn't exist"""
+        update_data = {
+            "day_de": "Samstag",
+            "day_en": "Saturday",
+            "time_start": "12:00",
+            "time_end": "14:00",
+            "title_de": "Test",
+            "title_en": "Test",
+            "is_active": True
+        }
+        update_resp = requests.put(f"{BASE_URL}/api/admin/schedule/nonexistent-id-12345", json=update_data, headers=get_auth_header())
+        assert update_resp.status_code == 404
+        print(f"✓ Update nonexistent item correctly returns 404")
+    
+    def test_admin_get_schedule(self):
+        """Test admin can retrieve all schedule items including inactive"""
+        response = requests.get(f"{BASE_URL}/api/admin/schedule", headers=get_auth_header())
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        print(f"✓ Admin retrieved {len(data)} schedule items")
+
+
 # ==================== CMS PAGES TESTS ====================
 
 class TestCMSPages:
