@@ -77,6 +77,24 @@ export const translations = {
       privacy: 'Datenschutz',
       imprint: 'Impressum'
     },
+    cookie: {
+      title: 'Cookie-Einstellungen',
+      description: 'Wir verwenden Cookies, um Ihnen die bestmögliche Erfahrung auf unserer Website zu bieten. Sie können wählen, welche Cookie-Kategorien Sie zulassen möchten.',
+      learnMore: 'Mehr erfahren',
+      showDetails: 'Einstellungen anzeigen',
+      hideDetails: 'Einstellungen ausblenden',
+      acceptAll: 'Alle akzeptieren',
+      acceptSelected: 'Auswahl bestätigen',
+      rejectAll: 'Alle ablehnen',
+      necessary: 'Notwendig',
+      necessaryDesc: 'Diese Cookies sind für die grundlegende Funktion der Website erforderlich und können nicht deaktiviert werden.',
+      functional: 'Funktional',
+      functionalDesc: 'Ermöglichen erweiterte Funktionen wie Spracheinstellungen und personalisierte Inhalte.',
+      analytics: 'Analyse & Statistik',
+      analyticsDesc: 'Helfen uns zu verstehen, wie Besucher unsere Website nutzen, um sie stetig zu verbessern.',
+      marketing: 'Marketing',
+      marketingDesc: 'Werden verwendet, um Werbung anzuzeigen, die für Sie relevant und ansprechend ist.'
+    },
     reviews: {
       title: 'BEWERTUNGEN',
       subtitle: 'Was unsere Schüler sagen'
@@ -159,6 +177,24 @@ export const translations = {
       rights: 'All rights reserved',
       privacy: 'Privacy Policy',
       imprint: 'Imprint'
+    },
+    cookie: {
+      title: 'Cookie Settings',
+      description: 'We use cookies to provide you with the best possible experience on our website. You can choose which cookie categories you wish to allow.',
+      learnMore: 'Learn more',
+      showDetails: 'Show settings',
+      hideDetails: 'Hide settings',
+      acceptAll: 'Accept all',
+      acceptSelected: 'Confirm selection',
+      rejectAll: 'Reject all',
+      necessary: 'Necessary',
+      necessaryDesc: 'These cookies are essential for the basic functionality of the website and cannot be disabled.',
+      functional: 'Functional',
+      functionalDesc: 'Enable enhanced features such as language settings and personalized content.',
+      analytics: 'Analytics & Statistics',
+      analyticsDesc: 'Help us understand how visitors use our website so we can continuously improve it.',
+      marketing: 'Marketing',
+      marketingDesc: 'Used to display advertising that is relevant and engaging for you.'
     },
     reviews: {
       title: 'REVIEWS',

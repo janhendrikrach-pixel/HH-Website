@@ -19,6 +19,7 @@ Professionelle Website für die Wrestling-Schule "Hedlock Headquarter" (Catch- u
 - Custom Logo & Favicon
 - Impressum-Seite (`/impressum`)
 - **Datenschutz-Seite (`/datenschutz`)** - Feb 2026
+- **DSGVO Cookie-Banner mit Kategorien** (Notwendig, Funktional, Analyse, Marketing) - Feb 2026
 - Deployment-Scripts (install.sh, docker-compose.yml, INSTALL.md)
 
 ## Backlog

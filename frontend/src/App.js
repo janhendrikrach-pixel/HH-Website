@@ -11,6 +11,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import TrainerDashboard from "./pages/TrainerDashboard";
 import ImpressumPage from "./pages/ImpressumPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import { CookieBanner } from "./components/CookieBanner";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
               <Route path="/datenschutz" element={<PrivacyPage />} />
               <Route path="/:slug" element={<DynamicPage />} />
             </Routes>
+            <CookieBanner />
           </div>
         </BrowserRouter>
       </AuthProvider>
