@@ -13,52 +13,23 @@ Professional website for "Hedlock Headquarter" wrestling school to replace exist
 - **Test Student**: max@test.de / test1234 (JWT, /login -> /student)
 - **Test Trainer**: leon@test.de / coach1234 (JWT, /login -> /trainer)
 
-## Architecture
-```
-/app/
-├── backend/
-│   ├── server.py (API: auth, users, sessions, attendance, notifications, CMS, CRUD)
-│   ├── uploads/ (gallery, instagram, trainers, pages, profiles)
-│   └── .env
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   │   ├── admin/ (AdminLogin, Dashboard, Bookings, Contacts, Trainers, Gallery, Schedule, Settings, Instagram, UsersManager)
-    │   │   ├── ui/ (Shadcn)
-    │   │   ├── SEOHead.jsx, CMSManager.jsx, ImageUpload.jsx
-    │   │   └── ...section components
-    │   ├── pages/ (HomePage, AdminPage, BookingPage, LoginPage, StudentDashboard, TrainerDashboard, DynamicPage)
-    │   └── lib/ (AuthContext, LanguageContext, translations, utils)
-    └── .env
-```
-
 ## What's Been Implemented (Feb 2026)
 - [x] Full bilingual website (DE/EN) with dark theme + gold accents
 - [x] All homepage sections (Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact)
 - [x] Admin Panel: Full CMS, Trainer/Gallery/Schedule/Instagram CRUD, Bookings, Contacts, Settings
-- [x] AdminPage refactored into 9 components
-- [x] Google Maps embed (XFights Hannover Badenstedt)
-- [x] SEO: Meta tags, OG, Twitter Cards, JSON-LD, robots.txt, sitemap.xml
-- [x] Custom Logo/Favicon
+- [x] AdminPage refactored into modular components
+- [x] Google Maps embed + SEO optimization + Logo/Favicon
 - [x] Installation scripts (VPS + Docker)
-- [x] Schedule fully editable from admin
-- [x] **Student/Trainer System**:
-  - Admin creates user accounts (student/trainer roles)
-  - JWT-based authentication (/login)
-  - Student dashboard: Profile, Training RSVP (confirm/decline), Notifications
-  - Trainer dashboard: Create sessions, assign coach, view attendance
-  - 24h reminder system (notifications + email when Resend API key configured)
-  - Auto-attendance creation for all students when session created
+- [x] Schedule fully editable
+- [x] Student/Trainer System (JWT auth, profiles, RSVP, notifications, email reminders)
+- [x] **Admin: Full User Management** (create/edit/delete students & trainers, detail views with attendance stats)
+- [x] **Admin: Training-Sessions** (CRUD, coach assignment, attendance overview per session)
+- [x] **Admin: Manual Attendance Change** (confirm/decline/reset any student per session)
+- [x] **Admin: User Detail View** (profile info, attendance rate %, progress bar, recent sessions)
 
 ## Testing Status
-- Backend: 100% (62/62 tests passed)
-- Frontend: 100%
-- Test reports: iteration_1-5
-
-## Email Configuration
-- Requires `RESEND_API_KEY` and `SENDER_EMAIL` in backend/.env
-- Without API key, emails are logged but not sent
-- Used for: welcome emails, 24h training reminders
+- All tests passed: iterations 1-6
+- Backend: 100%, Frontend: 100%
 
 ## Backlog
 - [ ] Live Instagram API integration
