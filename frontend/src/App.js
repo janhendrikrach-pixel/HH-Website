@@ -9,6 +9,7 @@ import DynamicPage from "./pages/DynamicPage";
 import LoginPage from "./pages/LoginPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import TrainerDashboard from "./pages/TrainerDashboard";
+import ImpressumPage from "./pages/ImpressumPage";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/student" element={<StudentDashboard />} />
               <Route path="/trainer" element={<TrainerDashboard />} />
+              <Route path="/impressum" element={<ImpressumPage />} />
               <Route path="/:slug" element={<DynamicPage />} />
             </Routes>
           </div>

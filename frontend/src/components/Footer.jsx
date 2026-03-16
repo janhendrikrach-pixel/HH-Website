@@ -116,7 +116,7 @@ export const Footer = () => {
               {t('footer.privacy')}
             </Link>
             <Link
-              to="/imprint"
+              to="/impressum"
               className="font-rajdhani text-gray-500 text-sm hover:text-gold transition-colors duration-300"
             >
               {t('footer.imprint')}
