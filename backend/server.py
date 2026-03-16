@@ -1,5 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -7,11 +7,15 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import secrets
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Any
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import bcrypt
+from jose import jwt, JWTError
+import resend
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -23,6 +27,7 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 (UPLOADS_DIR / 'trainers').mkdir(exist_ok=True)
 (UPLOADS_DIR / 'instagram').mkdir(exist_ok=True)
 (UPLOADS_DIR / 'pages').mkdir(exist_ok=True)
+(UPLOADS_DIR / 'profiles').mkdir(exist_ok=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -35,11 +40,24 @@ app = FastAPI(title="Headlock Headquarter API")
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Security
+# Security - Admin Basic Auth
 security = HTTPBasic()
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'headlock2024')
+
+# JWT Config
+JWT_SECRET = os.environ.get('JWT_SECRET', secrets.token_hex(32))
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 24
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+# Resend Email Config
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
@@ -51,6 +69,49 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+def create_access_token(data: dict) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
+    return jwt.encode({**data, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = await db.users.find_one({"id": user_id, "is_active": True}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+async def require_role(user: dict, roles: list):
+    if user["role"] not in roles:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+async def send_email(to: str, subject: str, html: str):
+    if not RESEND_API_KEY:
+        logging.info(f"Email (no API key): To={to}, Subject={subject}")
+        return None
+    try:
+        result = await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL, "to": [to], "subject": subject, "html": html
+        })
+        logging.info(f"Email sent to {to}: {result}")
+        return result
+    except Exception as e:
+        logging.error(f"Email failed to {to}: {e}")
+        return None
 
 # ========== MODELS ==========
 
@@ -190,6 +251,78 @@ class Page(PageBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# ========== USER & TRAINING MODELS ==========
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str = "student"  # student, trainer
+    phone: str = ""
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    bio: Optional[str] = None
+    image_url: Optional[str] = None
+    experience_level: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    weight_class: Optional[str] = None
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    email: str
+    role: str
+    phone: str = ""
+    bio: str = ""
+    image_url: str = ""
+    experience_level: str = ""
+    emergency_contact: str = ""
+    weight_class: str = ""
+    is_active: bool = True
+    created_at: str = ""
+
+class TrainingSessionBase(BaseModel):
+    schedule_id: str
+    date: str  # YYYY-MM-DD
+    coach_id: str = ""
+    coach_name: str = ""
+    notes_de: str = ""
+    notes_en: str = ""
+    max_participants: int = 30
+    is_cancelled: bool = False
+
+class TrainingSession(TrainingSessionBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_by: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class AttendanceUpdate(BaseModel):
+    status: str  # confirmed, declined
+
+class Attendance(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    user_id: str
+    user_name: str = ""
+    status: str = "pending"  # pending, confirmed, declined
+    responded_at: Optional[str] = None
+
+class NotificationOut(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    user_id: str
+    type: str = "reminder"
+    message_de: str = ""
+    message_en: str = ""
+    is_read: bool = False
+    created_at: str = ""
 
 # ========== PUBLIC ENDPOINTS ==========
 
@@ -538,13 +671,265 @@ async def admin_init_homepage(username: str = Depends(verify_admin)):
     
     return {"status": "initialized", "count": len(sections)}
 
+# ========== AUTH ENDPOINTS ==========
+
+@api_router.post("/auth/login")
+async def user_login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await db.users.find_one({"email": form_data.username, "is_active": True}, {"_id": 0})
+    if not user or not verify_password(form_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
+    token = create_access_token({"sub": user["id"], "role": user["role"]})
+    return {"access_token": token, "token_type": "bearer", "user": UserOut(**user).model_dump()}
+
+@api_router.get("/auth/me")
+async def get_me(user: dict = Depends(get_current_user)):
+    return UserOut(**user).model_dump()
+
+@api_router.put("/auth/profile")
+async def update_profile(updates: UserUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
+    if update_data:
+        await db.users.update_one({"id": user["id"]}, {"$set": update_data})
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    return UserOut(**updated).model_dump()
+
+@api_router.put("/auth/password")
+async def change_password(current_password: str, new_password: str, user: dict = Depends(get_current_user)):
+    if not verify_password(current_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Aktuelles Passwort ist falsch")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(new_password)}})
+    return {"status": "password_changed"}
+
+# ========== ADMIN USER MANAGEMENT ==========
+
+@api_router.get("/admin/users")
+async def admin_get_users(username: str = Depends(verify_admin)):
+    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(500)
+    return users
+
+@api_router.post("/admin/users")
+async def admin_create_user(user_data: UserCreate, username: str = Depends(verify_admin)):
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="E-Mail existiert bereits")
+    if user_data.role not in ("student", "trainer"):
+        raise HTTPException(status_code=400, detail="Rolle muss 'student' oder 'trainer' sein")
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "name": user_data.name,
+        "email": user_data.email,
+        "password_hash": hash_password(user_data.password),
+        "role": user_data.role,
+        "phone": user_data.phone,
+        "bio": "", "image_url": "", "experience_level": "", "emergency_contact": "", "weight_class": "",
+        "is_active": True,
+        "created_by": username,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user_doc)
+    # Send welcome email
+    await send_email(user_data.email, "Willkommen bei Headlock Headquarter",
+        f"<h2>Willkommen, {user_data.name}!</h2>"
+        f"<p>Dein Account bei Headlock Headquarter wurde erstellt.</p>"
+        f"<p><b>E-Mail:</b> {user_data.email}</p>"
+        f"<p><b>Passwort:</b> {user_data.password}</p>"
+        f"<p>Bitte ändere dein Passwort nach dem ersten Login.</p>")
+    return {k: v for k, v in user_doc.items() if k != "password_hash" and k != "_id"}
+
+@api_router.put("/admin/users/{user_id}")
+async def admin_update_user(user_id: str, updates: dict, username: str = Depends(verify_admin)):
+    safe_fields = {"name", "email", "phone", "role", "is_active", "experience_level", "bio", "image_url"}
+    update_data = {k: v for k, v in updates.items() if k in safe_fields}
+    if "password" in updates and updates["password"]:
+        update_data["password_hash"] = hash_password(updates["password"])
+    if update_data:
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, username: str = Depends(verify_admin)):
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.attendance.delete_many({"user_id": user_id})
+    await db.notifications.delete_many({"user_id": user_id})
+    return {"status": "deleted"}
+
+# ========== TRAINING SESSIONS ==========
+
+@api_router.get("/sessions")
+async def get_sessions(user: dict = Depends(get_current_user)):
+    sessions = await db.training_sessions.find(
+        {"date": {"$gte": datetime.now(timezone.utc).strftime("%Y-%m-%d")}},
+        {"_id": 0}
+    ).sort("date", 1).to_list(50)
+    # Attach attendance for current user
+    for session in sessions:
+        att = await db.attendance.find_one({"session_id": session["id"], "user_id": user["id"]}, {"_id": 0})
+        session["my_status"] = att["status"] if att else "pending"
+    return sessions
+
+@api_router.get("/sessions/all")
+async def get_all_sessions(user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    sessions = await db.training_sessions.find({}, {"_id": 0}).sort("date", -1).to_list(200)
+    for session in sessions:
+        attendees = await db.attendance.find({"session_id": session["id"]}, {"_id": 0}).to_list(100)
+        session["attendees"] = attendees
+        session["confirmed_count"] = sum(1 for a in attendees if a["status"] == "confirmed")
+        session["declined_count"] = sum(1 for a in attendees if a["status"] == "declined")
+        session["pending_count"] = sum(1 for a in attendees if a["status"] == "pending")
+    return sessions
+
+@api_router.post("/sessions")
+async def create_session(session_data: TrainingSessionBase, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    session = TrainingSession(**session_data.model_dump(), created_by=user["id"])
+    await db.training_sessions.insert_one(session.model_dump())
+    # Create pending attendance for all active students
+    students = await db.users.find({"role": "student", "is_active": True}, {"_id": 0}).to_list(500)
+    for student in students:
+        att = Attendance(session_id=session.id, user_id=student["id"], user_name=student["name"])
+        await db.attendance.insert_one(att.model_dump())
+        # Create notification
+        schedule = await db.schedule.find_one({"id": session_data.schedule_id}, {"_id": 0})
+        title_de = schedule["title_de"] if schedule else "Training"
+        title_en = schedule["title_en"] if schedule else "Training"
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()), "user_id": student["id"], "type": "new_session",
+            "message_de": f"Neues Training am {session_data.date}: {title_de}. Bitte zu- oder absagen.",
+            "message_en": f"New training on {session_data.date}: {title_en}. Please confirm or decline.",
+            "is_read": False, "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    return session.model_dump()
+
+@api_router.put("/sessions/{session_id}")
+async def update_session(session_id: str, updates: TrainingSessionBase, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    result = await db.training_sessions.update_one({"id": session_id}, {"$set": updates.model_dump()})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    updated = await db.training_sessions.find_one({"id": session_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    result = await db.training_sessions.delete_one({"id": session_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.attendance.delete_many({"session_id": session_id})
+    return {"status": "deleted"}
+
+# ========== ATTENDANCE / RSVP ==========
+
+@api_router.put("/attendance/{session_id}")
+async def update_attendance(session_id: str, data: AttendanceUpdate, user: dict = Depends(get_current_user)):
+    if data.status not in ("confirmed", "declined"):
+        raise HTTPException(status_code=400, detail="Status muss 'confirmed' oder 'declined' sein")
+    result = await db.attendance.update_one(
+        {"session_id": session_id, "user_id": user["id"]},
+        {"$set": {"status": data.status, "responded_at": datetime.now(timezone.utc).isoformat(), "user_name": user["name"]}},
+        upsert=True
+    )
+    return {"status": "updated", "attendance_status": data.status}
+
+@api_router.get("/attendance/{session_id}")
+async def get_attendance(session_id: str, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    attendees = await db.attendance.find({"session_id": session_id}, {"_id": 0}).to_list(200)
+    return attendees
+
+# ========== NOTIFICATIONS ==========
+
+@api_router.get("/notifications")
+async def get_notifications(user: dict = Depends(get_current_user)):
+    notifs = await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return notifs
+
+@api_router.put("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str, user: dict = Depends(get_current_user)):
+    await db.notifications.update_one({"id": notif_id, "user_id": user["id"]}, {"$set": {"is_read": True}})
+    return {"status": "read"}
+
+@api_router.put("/notifications/read-all")
+async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
+    await db.notifications.update_many({"user_id": user["id"]}, {"$set": {"is_read": True}})
+    return {"status": "all_read"}
+
+# ========== REMINDER SYSTEM ==========
+
+async def check_and_send_reminders():
+    """Check for training sessions within 24h and send reminders to students without RSVP."""
+    now = datetime.now(timezone.utc)
+    tomorrow = (now + timedelta(hours=24)).strftime("%Y-%m-%d")
+    today = now.strftime("%Y-%m-%d")
+
+    sessions = await db.training_sessions.find({
+        "date": {"$gte": today, "$lte": tomorrow},
+        "is_cancelled": False
+    }, {"_id": 0}).to_list(50)
+
+    for session in sessions:
+        pending = await db.attendance.find({
+            "session_id": session["id"], "status": "pending"
+        }, {"_id": 0}).to_list(200)
+
+        schedule = await db.schedule.find_one({"id": session.get("schedule_id", "")}, {"_id": 0})
+        title = schedule["title_de"] if schedule else "Training"
+
+        for att in pending:
+            user = await db.users.find_one({"id": att["user_id"], "is_active": True}, {"_id": 0})
+            if not user:
+                continue
+            # Check if reminder already sent
+            existing = await db.notifications.find_one({
+                "user_id": user["id"], "type": "reminder",
+                "message_de": {"$regex": session["date"]}
+            })
+            if existing:
+                continue
+            # Create notification
+            await db.notifications.insert_one({
+                "id": str(uuid.uuid4()), "user_id": user["id"], "type": "reminder",
+                "message_de": f"Erinnerung: {title} am {session['date']} ({session.get('time_start', '')}). Du hast noch nicht zu- oder abgesagt!",
+                "message_en": f"Reminder: {title} on {session['date']} ({session.get('time_start', '')}). You haven't responded yet!",
+                "is_read": False, "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            # Send email
+            if user.get("email"):
+                await send_email(user["email"],
+                    f"Erinnerung: {title} am {session['date']}",
+                    f"<h2>Training-Erinnerung</h2>"
+                    f"<p>Hallo {user['name']},</p>"
+                    f"<p>Du hast noch nicht für das Training am <b>{session['date']}</b> zu- oder abgesagt:</p>"
+                    f"<p><b>{title}</b></p>"
+                    f"<p>Bitte logge dich ein und gib deine Rückmeldung.</p>"
+                    f"<p>Dein Headlock Headquarter Team</p>")
+
+# Background task starter
+async def reminder_loop():
+    while True:
+        try:
+            await check_and_send_reminders()
+        except Exception as e:
+            logging.error(f"Reminder check error: {e}")
+        await asyncio.sleep(3600)  # Check every hour
+
+@app.on_event("startup")
+async def start_reminder_task():
+    asyncio.create_task(reminder_loop())
+
 # ========== FILE UPLOAD ==========
 
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
 @api_router.post("/admin/upload/{category}")
 async def upload_image(category: str, file: UploadFile = File(...), username: str = Depends(verify_admin)):
-    if category not in ['gallery', 'trainers', 'instagram', 'pages']:
+    if category not in ['gallery', 'trainers', 'instagram', 'pages', 'profiles']:
         raise HTTPException(status_code=400, detail="Invalid category")
     
     content = await file.read()
@@ -570,6 +955,22 @@ async def delete_uploaded_image(category: str, filename: str, username: str = De
         file_path.unlink()
         return {"status": "deleted"}
     raise HTTPException(status_code=404, detail="File not found")
+
+@api_router.post("/upload/profile")
+async def upload_profile_image(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Invalid file type")
+    filename = f"{uuid.uuid4()}{ext}"
+    file_path = UPLOADS_DIR / 'profiles' / filename
+    with open(file_path, 'wb') as f:
+        f.write(content)
+    url = f"/api/uploads/profiles/{filename}"
+    await db.users.update_one({"id": user["id"]}, {"$set": {"image_url": url}})
+    return {"url": url}
 
 # Seed initial data
 @api_router.post("/admin/seed")

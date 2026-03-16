@@ -10,9 +10,10 @@ import { GalleryManager } from '../components/admin/GalleryManager';
 import { ScheduleManager } from '../components/admin/ScheduleManager';
 import { SettingsManager } from '../components/admin/SettingsManager';
 import { InstagramManager } from '../components/admin/InstagramManager';
+import { UsersManager } from '../components/admin/UsersManager';
 import {
   Users, Calendar, Image, Mail, Settings, LogOut, Clock,
-  LayoutDashboard, Menu, X, Instagram, FileText, Layout
+  LayoutDashboard, Menu, X, Instagram, FileText, Layout, UserPlus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -136,6 +137,7 @@ export default function AdminPage() {
 
   const navItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { id: 'users', icon: UserPlus, label: language === 'de' ? 'Benutzer' : 'Users' },
     { id: 'homepage', icon: Layout, label: 'Homepage' },
     { id: 'pages', icon: FileText, label: language === 'de' ? 'Seiten' : 'Pages' },
     { id: 'trainers', icon: Users, label: language === 'de' ? 'Trainer' : 'Trainers' },
@@ -211,6 +213,9 @@ export default function AdminPage() {
             <>
               {activeTab === 'dashboard' && (
                 <AdminDashboard trainers={trainers} bookings={bookings} contacts={contacts} gallery={gallery} language={language} onSeedData={seedData} />
+              )}
+              {activeTab === 'users' && (
+                <UsersManager getAuthHeader={getAuthHeader} language={language} />
               )}
               {activeTab === 'homepage' && (
                 <SectionsManager getAuthHeader={getAuthHeader} language={language} pageId="home" />
