@@ -1,36 +1,31 @@
-# Headlock Headquarter - Wrestling School Website
+# Headlock Headquarter - PRD
 
-## Original Problem Statement
-Professional website for "Hedlock Headquarter" wrestling school to replace existing site at wrestling.schule.
+## Problemstellung
+Professionelle Website für die Wrestling-Schule "Hedlock Headquarter" (Catch- und Wrestlingverein Hannover e.V.) mit dunklem Design, Gold-Akzenten, Zweisprachigkeit (DE/EN) und vollständigem Backend-CMS.
 
 ## Tech Stack
-- **Backend**: FastAPI + Motor (async MongoDB) + JWT Auth + bcrypt
-- **Frontend**: React + Tailwind CSS + Shadcn UI
-- **Database**: MongoDB
+- **Backend:** FastAPI, Motor (async MongoDB), JWT Auth, fastapi-mail
+- **Frontend:** React, React Router, Tailwind CSS, Shadcn UI
+- **Datenbank:** MongoDB
 
-## Credentials
-- **Admin**: user: `admin`, pass: `headlock2024` (HTTP Basic Auth, /admin)
-- **Test Student**: max@test.de / test1234 (JWT, /login -> /student)
-- **Test Trainer**: leon@test.de / coach1234 (JWT, /login -> /trainer)
-
-## What's Been Implemented (Feb 2026)
-- [x] Full bilingual website (DE/EN) with dark theme + gold accents
-- [x] All homepage sections (Hero, About, Trainers, Schedule, Gallery, Instagram, Reviews, Contact)
-- [x] Admin Panel: Full CMS, Trainer/Gallery/Schedule/Instagram CRUD, Bookings, Contacts, Settings
-- [x] AdminPage refactored into modular components
-- [x] Google Maps embed + SEO optimization + Logo/Favicon
-- [x] Installation scripts (VPS + Docker)
-- [x] Schedule fully editable
-- [x] Student/Trainer System (JWT auth, profiles, RSVP, notifications, email reminders)
-- [x] **Admin: Full User Management** (create/edit/delete students & trainers, detail views with attendance stats)
-- [x] **Admin: Training-Sessions** (CRUD, coach assignment, attendance overview per session)
-- [x] **Admin: Manual Attendance Change** (confirm/decline/reset any student per session)
-- [x] **Admin: User Detail View** (profile info, attendance rate %, progress bar, recent sessions)
-
-## Testing Status
-- All tests passed: iterations 1-6
-- Backend: 100%, Frontend: 100%
+## Implementierte Features
+- Öffentliche Website mit allen Sektionen (Hero, About, Trainer, Schedule, Gallery, Contact)
+- Vollständiges CMS im Admin-Panel (User: admin / Pass: headlock2024)
+- Multi-Rollen-System (Admin, Trainer, Schüler) mit JWT-Auth
+- Schüler- und Trainer-Dashboards
+- Anwesenheitsverwaltung & E-Mail-Benachrichtigungen
+- SEO (Meta-Tags, Sitemap, robots.txt)
+- Google Maps Integration
+- Custom Logo & Favicon
+- Impressum-Seite (`/impressum`)
+- **Datenschutz-Seite (`/datenschutz`)** - Feb 2026
+- Deployment-Scripts (install.sh, docker-compose.yml, INSTALL.md)
 
 ## Backlog
-- [ ] Live Instagram API integration
-- [ ] Cloud storage for images
+### P1
+- Automatische Trainings-Erinnerungen (Cron-Job für 24h vor Training)
+
+### P2
+- Instagram API Integration (automatischer Post-Abruf)
+- Cloud Storage für Bild-Uploads (Migration von lokal zu Cloud)
+- Backend-Refactoring (server.py in Module aufteilen)

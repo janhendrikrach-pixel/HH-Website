@@ -110,7 +110,8 @@ export const Footer = () => {
           </p>
           <div className="flex gap-6">
             <Link
-              to="/privacy"
+              to="/datenschutz"
+              data-testid="footer-privacy-link"
               className="font-rajdhani text-gray-500 text-sm hover:text-gold transition-colors duration-300"
             >
               {t('footer.privacy')}
