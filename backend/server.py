@@ -671,6 +671,88 @@ async def admin_init_homepage(username: str = Depends(verify_admin)):
     
     return {"status": "initialized", "count": len(sections)}
 
+# ========== ADMIN SESSION & ATTENDANCE MANAGEMENT ==========
+
+@api_router.get("/admin/sessions")
+async def admin_get_sessions(username: str = Depends(verify_admin)):
+    sessions = await db.training_sessions.find({}, {"_id": 0}).sort("date", -1).to_list(200)
+    for session in sessions:
+        attendees = await db.attendance.find({"session_id": session["id"]}, {"_id": 0}).to_list(200)
+        # Enrich with user info
+        for att in attendees:
+            user = await db.users.find_one({"id": att.get("user_id")}, {"_id": 0, "password_hash": 0})
+            if user:
+                att["user_email"] = user.get("email", "")
+                att["user_phone"] = user.get("phone", "")
+                att["user_role"] = user.get("role", "")
+        session["attendees"] = attendees
+        session["confirmed_count"] = sum(1 for a in attendees if a["status"] == "confirmed")
+        session["declined_count"] = sum(1 for a in attendees if a["status"] == "declined")
+        session["pending_count"] = sum(1 for a in attendees if a["status"] == "pending")
+    return sessions
+
+@api_router.post("/admin/sessions")
+async def admin_create_session(session_data: TrainingSessionBase, username: str = Depends(verify_admin)):
+    session = TrainingSession(**session_data.model_dump(), created_by=username)
+    await db.training_sessions.insert_one(session.model_dump())
+    students = await db.users.find({"role": "student", "is_active": True}, {"_id": 0}).to_list(500)
+    for student in students:
+        att = Attendance(session_id=session.id, user_id=student["id"], user_name=student["name"])
+        await db.attendance.insert_one(att.model_dump())
+        schedule = await db.schedule.find_one({"id": session_data.schedule_id}, {"_id": 0})
+        title_de = schedule["title_de"] if schedule else "Training"
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()), "user_id": student["id"], "type": "new_session",
+            "message_de": f"Neues Training am {session_data.date}: {title_de}. Bitte zu- oder absagen.",
+            "message_en": f"New training on {session_data.date}: {title_de}. Please confirm or decline.",
+            "is_read": False, "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    return session.model_dump()
+
+@api_router.put("/admin/sessions/{session_id}")
+async def admin_update_session(session_id: str, updates: TrainingSessionBase, username: str = Depends(verify_admin)):
+    result = await db.training_sessions.update_one({"id": session_id}, {"$set": updates.model_dump()})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return await db.training_sessions.find_one({"id": session_id}, {"_id": 0})
+
+@api_router.delete("/admin/sessions/{session_id}")
+async def admin_delete_session(session_id: str, username: str = Depends(verify_admin)):
+    result = await db.training_sessions.delete_one({"id": session_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.attendance.delete_many({"session_id": session_id})
+    return {"status": "deleted"}
+
+@api_router.put("/admin/attendance/{session_id}/{user_id}")
+async def admin_update_attendance(session_id: str, user_id: str, data: AttendanceUpdate, username: str = Depends(verify_admin)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    user_name = user["name"] if user else ""
+    await db.attendance.update_one(
+        {"session_id": session_id, "user_id": user_id},
+        {"$set": {"status": data.status, "responded_at": datetime.now(timezone.utc).isoformat(), "user_name": user_name}},
+        upsert=True
+    )
+    return {"status": "updated"}
+
+@api_router.get("/admin/users/{user_id}/stats")
+async def admin_get_user_stats(user_id: str, username: str = Depends(verify_admin)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    all_att = await db.attendance.find({"user_id": user_id}, {"_id": 0}).to_list(500)
+    total = len(all_att)
+    confirmed = sum(1 for a in all_att if a["status"] == "confirmed")
+    declined = sum(1 for a in all_att if a["status"] == "declined")
+    pending = sum(1 for a in all_att if a["status"] == "pending")
+    # Recent sessions
+    recent = []
+    for att in sorted(all_att, key=lambda x: x.get("responded_at") or "", reverse=True)[:10]:
+        session = await db.training_sessions.find_one({"id": att["session_id"]}, {"_id": 0})
+        if session:
+            recent.append({"date": session["date"], "status": att["status"], "coach_name": session.get("coach_name", "")})
+    return {**user, "stats": {"total": total, "confirmed": confirmed, "declined": declined, "pending": pending}, "recent_sessions": recent}
+
 # ========== AUTH ENDPOINTS ==========
 
 @api_router.post("/auth/login")
