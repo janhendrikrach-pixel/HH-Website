@@ -11,6 +11,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import TrainerDashboard from "./pages/TrainerDashboard";
 import ImpressumPage from "./pages/ImpressumPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import MemberApp from "./pages/app/MemberApp";
 import { CookieBanner } from "./components/CookieBanner";
 
 function App() {
@@ -24,8 +25,9 @@ function App() {
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/booking" element={<BookingPage />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/student" element={<StudentDashboard />} />
-              <Route path="/trainer" element={<TrainerDashboard />} />
+              <Route path="/app" element={<MemberApp />} />
+              <Route path="/student" element={<MemberApp />} />
+              <Route path="/trainer" element={<MemberApp />} />
               <Route path="/impressum" element={<ImpressumPage />} />
               <Route path="/datenschutz" element={<PrivacyPage />} />
               <Route path="/:slug" element={<DynamicPage />} />

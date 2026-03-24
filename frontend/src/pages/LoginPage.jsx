@@ -22,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      navigate(user.role === 'trainer' ? '/trainer' : '/student');
+      navigate('/app');
     } catch {
       setError(language === 'de' ? 'Ungültige Anmeldedaten' : 'Invalid credentials');
     } finally {

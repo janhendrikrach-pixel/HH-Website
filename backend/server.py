@@ -942,6 +942,193 @@ async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     await db.notifications.update_many({"user_id": user["id"]}, {"$set": {"is_read": True}})
     return {"status": "all_read"}
 
+# ========== MESSAGES ==========
+
+class MessageCreate(BaseModel):
+    recipient_id: str
+    content: str
+
+@api_router.get("/messages/users/list")
+async def get_messageable_users(user: dict = Depends(get_current_user)):
+    """Get list of users that can be messaged."""
+    users = await db.users.find(
+        {"is_active": True, "id": {"$ne": user["id"]}},
+        {"_id": 0, "password_hash": 0}
+    ).to_list(200)
+    return [{"id": u["id"], "name": u["name"], "role": u["role"], "image_url": u.get("image_url", "")} for u in users]
+
+@api_router.get("/messages/conversations")
+async def get_conversations(user: dict = Depends(get_current_user)):
+    """Get list of conversations for current user."""
+    pipeline = [
+        {"$match": {"$or": [{"sender_id": user["id"]}, {"recipient_id": user["id"]}]}},
+        {"$sort": {"created_at": -1}},
+        {"$group": {
+            "_id": {"$cond": [{"$eq": ["$sender_id", user["id"]]}, "$recipient_id", "$sender_id"]},
+            "last_message": {"$first": "$content"},
+            "last_at": {"$first": "$created_at"},
+            "unread": {"$sum": {"$cond": [
+                {"$and": [{"$eq": ["$recipient_id", user["id"]]}, {"$eq": ["$is_read", False]}]}, 1, 0
+            ]}}
+        }}
+    ]
+    convos = await db.messages.aggregate(pipeline).to_list(100)
+    result = []
+    for c in convos:
+        partner = await db.users.find_one({"id": c["_id"]}, {"_id": 0, "password_hash": 0})
+        if partner:
+            result.append({
+                "partner_id": partner["id"], "partner_name": partner["name"],
+                "partner_role": partner["role"], "partner_image": partner.get("image_url", ""),
+                "last_message": c["last_message"], "last_at": c["last_at"], "unread": c["unread"]
+            })
+    return sorted(result, key=lambda x: x["last_at"], reverse=True)
+
+@api_router.get("/messages/{partner_id}")
+async def get_messages(partner_id: str, user: dict = Depends(get_current_user)):
+    """Get messages between current user and partner."""
+    msgs = await db.messages.find({
+        "$or": [
+            {"sender_id": user["id"], "recipient_id": partner_id},
+            {"sender_id": partner_id, "recipient_id": user["id"]}
+        ]
+    }, {"_id": 0}).sort("created_at", 1).to_list(200)
+    # Mark received messages as read
+    await db.messages.update_many(
+        {"sender_id": partner_id, "recipient_id": user["id"], "is_read": False},
+        {"$set": {"is_read": True}}
+    )
+    return msgs
+
+@api_router.post("/messages")
+async def send_message(msg: MessageCreate, user: dict = Depends(get_current_user)):
+    """Send a message to another user."""
+    recipient = await db.users.find_one({"id": msg.recipient_id, "is_active": True}, {"_id": 0})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    doc = {
+        "id": str(uuid.uuid4()), "sender_id": user["id"], "sender_name": user["name"],
+        "recipient_id": msg.recipient_id, "recipient_name": recipient["name"],
+        "content": msg.content, "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.messages.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+# ========== NOTES ==========
+
+class NoteCreate(BaseModel):
+    title: str
+    content: str
+    session_id: Optional[str] = None
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+
+@api_router.get("/notes")
+async def get_notes(user: dict = Depends(get_current_user)):
+    notes = await db.notes.find({"user_id": user["id"]}, {"_id": 0}).sort("updated_at", -1).to_list(200)
+    return notes
+
+@api_router.post("/notes")
+async def create_note(note: NoteCreate, user: dict = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()), "user_id": user["id"],
+        "title": note.title, "content": note.content,
+        "session_id": note.session_id,
+        "created_at": now, "updated_at": now
+    }
+    await db.notes.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+@api_router.put("/notes/{note_id}")
+async def update_note(note_id: str, note: NoteUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in note.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.notes.update_one({"id": note_id, "user_id": user["id"]}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notiz nicht gefunden")
+    updated = await db.notes.find_one({"id": note_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/notes/{note_id}")
+async def delete_note(note_id: str, user: dict = Depends(get_current_user)):
+    result = await db.notes.delete_one({"id": note_id, "user_id": user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Notiz nicht gefunden")
+    return {"status": "deleted"}
+
+# ========== TRAINING PLANS ==========
+
+class TrainingPlanCreate(BaseModel):
+    student_id: str
+    title: str
+    description: str = ""
+    exercises: List[dict] = []  # [{name, sets, reps, notes}]
+
+class TrainingPlanUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    exercises: Optional[List[dict]] = None
+
+@api_router.get("/training-plans")
+async def get_training_plans(user: dict = Depends(get_current_user)):
+    if user["role"] == "student":
+        plans = await db.training_plans.find({"student_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    else:
+        plans = await db.training_plans.find({"trainer_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    # Enrich with names
+    for p in plans:
+        student = await db.users.find_one({"id": p.get("student_id")}, {"_id": 0, "password_hash": 0})
+        trainer = await db.users.find_one({"id": p.get("trainer_id")}, {"_id": 0, "password_hash": 0})
+        p["student_name"] = student["name"] if student else ""
+        p["trainer_name"] = trainer["name"] if trainer else ""
+    return plans
+
+@api_router.post("/training-plans")
+async def create_training_plan(plan: TrainingPlanCreate, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    student = await db.users.find_one({"id": plan.student_id, "is_active": True}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Schüler nicht gefunden")
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()), "trainer_id": user["id"],
+        "student_id": plan.student_id, "title": plan.title,
+        "description": plan.description, "exercises": plan.exercises,
+        "created_at": now, "updated_at": now
+    }
+    await db.training_plans.insert_one(doc)
+    # Notify student
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": plan.student_id, "type": "training_plan",
+        "message_de": f"Neuer Trainingsplan von {user['name']}: {plan.title}",
+        "message_en": f"New training plan from {user['name']}: {plan.title}",
+        "is_read": False, "created_at": now
+    })
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+@api_router.put("/training-plans/{plan_id}")
+async def update_training_plan(plan_id: str, plan: TrainingPlanUpdate, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    update_data = {k: v for k, v in plan.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.training_plans.update_one({"id": plan_id, "trainer_id": user["id"]}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Trainingsplan nicht gefunden")
+    updated = await db.training_plans.find_one({"id": plan_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/training-plans/{plan_id}")
+async def delete_training_plan(plan_id: str, user: dict = Depends(get_current_user)):
+    await require_role(user, ["trainer"])
+    result = await db.training_plans.delete_one({"id": plan_id, "trainer_id": user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Trainingsplan nicht gefunden")
+    return {"status": "deleted"}
+
 # ========== REMINDER SYSTEM ==========
 
 async def check_and_send_reminders():

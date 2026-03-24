@@ -2,8 +2,11 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1a1a1a" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#050505" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Headlock HQ" />
         <meta name="description" content="Headlock Headquarter - Professionelles Catch- und Wrestlingtraining in Hannover. Wrestling Schule des CWH e.V. seit 1994." />
         <meta name="author" content="Headlock Headquarter - CWH e.V." />
         <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
@@ -44,6 +47,13 @@
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
+        <script>
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+          }
+        </script>
         <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
