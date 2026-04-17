@@ -24,6 +24,7 @@ export const Navbar = () => {
     { href: '/#about', label: t('nav.about') },
     { href: '/#trainers', label: t('nav.trainers') },
     { href: '/#schedule', label: t('nav.schedule') },
+    { href: '/veranstaltungen', label: t('nav.events') },
     { href: '/#gallery', label: t('nav.gallery') },
     { href: '/#contact', label: t('nav.contact') },
   ];
@@ -38,6 +39,8 @@ export const Navbar = () => {
       }
     }
   };
+
+  const isExternalLink = (href) => !href.startsWith('/#') && href !== '/';
 
   return (
     <nav
@@ -67,22 +70,33 @@ export const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={(e) => {
-                  if (item.href.startsWith('/#')) {
-                    e.preventDefault();
-                    handleNavClick(item.href);
-                  }
-                }}
-                data-testid={`nav-${item.href.replace('/#', '').replace('/', 'home')}`}
-                className="font-rajdhani text-sm uppercase tracking-wider text-gray-300 hover:text-gold transition-colors duration-300 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-gold after:transition-all after:duration-300 hover:after:w-full"
-              >
-                {item.label}
-              </a>
-            ))}
+            {navItems.map((item) => 
+              isExternalLink(item.href) ? (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  data-testid={`nav-${item.href.replace('/', '').replace('/#', '')}`}
+                  className="font-rajdhani text-sm uppercase tracking-wider text-gray-300 hover:text-gold transition-colors duration-300 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-gold after:transition-all after:duration-300 hover:after:w-full"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={(e) => {
+                    if (item.href.startsWith('/#')) {
+                      e.preventDefault();
+                      handleNavClick(item.href);
+                    }
+                  }}
+                  data-testid={`nav-${item.href.replace('/#', '').replace('/', 'home')}`}
+                  className="font-rajdhani text-sm uppercase tracking-wider text-gray-300 hover:text-gold transition-colors duration-300 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-gold after:transition-all after:duration-300 hover:after:w-full"
+                >
+                  {item.label}
+                </a>
+              )
+            )}
           </div>
 
           {/* Right Side */}
@@ -120,23 +134,35 @@ export const Navbar = () => {
               </SheetTrigger>
               <SheetContent side="right" className="bg-charcoal border-white/10 w-80">
                 <div className="flex flex-col gap-6 mt-8">
-                  {navItems.map((item) => (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      onClick={(e) => {
-                        if (item.href.startsWith('/#')) {
-                          e.preventDefault();
-                          handleNavClick(item.href);
-                        }
-                        setIsOpen(false);
-                      }}
-                      data-testid={`mobile-nav-${item.href.replace('/#', '').replace('/', 'home')}`}
-                      className="font-teko text-2xl uppercase tracking-wider text-white hover:text-gold transition-colors duration-300"
-                    >
-                      {item.label}
-                    </a>
-                  ))}
+                  {navItems.map((item) => 
+                    isExternalLink(item.href) ? (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setIsOpen(false)}
+                        data-testid={`mobile-nav-${item.href.replace('/', '').replace('/#', '')}`}
+                        className="font-teko text-2xl uppercase tracking-wider text-white hover:text-gold transition-colors duration-300"
+                      >
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        onClick={(e) => {
+                          if (item.href.startsWith('/#')) {
+                            e.preventDefault();
+                            handleNavClick(item.href);
+                          }
+                          setIsOpen(false);
+                        }}
+                        data-testid={`mobile-nav-${item.href.replace('/#', '').replace('/', 'home')}`}
+                        className="font-teko text-2xl uppercase tracking-wider text-white hover:text-gold transition-colors duration-300"
+                      >
+                        {item.label}
+                      </a>
+                    )
+                  )}
                   <Link
                     to="/booking"
                     onClick={() => setIsOpen(false)}

@@ -10,6 +10,7 @@ import { GallerySection } from '../components/GallerySection';
 import { ContactSection } from '../components/ContactSection';
 import { ReviewsSection } from '../components/ReviewsSection';
 import { InstagramSection } from '../components/InstagramSection';
+import { EventTeaser } from '../components/EventTeaser';
 
 export default function HomePage() {
   return (
@@ -19,6 +20,7 @@ export default function HomePage() {
       <main>
         <HeroSection />
         <AboutSection />
+        <EventTeaser />
         <TrainersSection />
         <ScheduleSection />
         <GallerySection />

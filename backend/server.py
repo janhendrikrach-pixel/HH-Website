@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -8,6 +9,7 @@ import os
 import logging
 import secrets
 import asyncio
+import io
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Any
@@ -16,6 +18,12 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 from jose import jwt, JWTError
 import resend
+import qrcode
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib.colors import HexColor
+from reportlab.pdfgen.canvas import Canvas as PDFCanvas
+from reportlab.lib.utils import ImageReader
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -794,8 +802,8 @@ async def admin_create_user(user_data: UserCreate, username: str = Depends(verif
     existing = await db.users.find_one({"email": user_data.email})
     if existing:
         raise HTTPException(status_code=400, detail="E-Mail existiert bereits")
-    if user_data.role not in ("student", "trainer"):
-        raise HTTPException(status_code=400, detail="Rolle muss 'student' oder 'trainer' sein")
+    if user_data.role not in ("student", "trainer", "admin", "ticket_scanner"):
+        raise HTTPException(status_code=400, detail="Ungültige Rolle")
     user_doc = {
         "id": str(uuid.uuid4()),
         "name": user_data.name,
@@ -1129,6 +1137,356 @@ async def delete_training_plan(plan_id: str, user: dict = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Trainingsplan nicht gefunden")
     return {"status": "deleted"}
 
+# ========== EVENTS & TICKETS ==========
+
+class EventCreate(BaseModel):
+    title_de: str
+    title_en: str = ""
+    description_de: str = ""
+    description_en: str = ""
+    date: str
+    time: str = ""
+    location: str = ""
+    image_url: str = ""
+    ticket_price: float = 0
+    ticket_quota: int = 0
+    is_published: bool = False
+
+class EventUpdate(BaseModel):
+    title_de: Optional[str] = None
+    title_en: Optional[str] = None
+    description_de: Optional[str] = None
+    description_en: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    location: Optional[str] = None
+    image_url: Optional[str] = None
+    ticket_price: Optional[float] = None
+    ticket_quota: Optional[int] = None
+    is_published: Optional[bool] = None
+
+class PaymentSettingsUpdate(BaseModel):
+    bank_name: Optional[str] = None
+    account_holder: Optional[str] = None
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    reference_prefix: Optional[str] = None
+    additional_info_de: Optional[str] = None
+    additional_info_en: Optional[str] = None
+
+class TicketReservation(BaseModel):
+    event_id: str
+    customer_name: str
+    customer_email: str
+    customer_phone: str = ""
+    quantity: int = 1
+    payment_method: str  # "box_office" or "transfer"
+
+# Public: get events
+@api_router.get("/events")
+async def get_events():
+    events = await db.events.find({"is_published": True}, {"_id": 0}).sort("date", 1).to_list(100)
+    for e in events:
+        if e.get("ticket_quota", 0) > 0:
+            sold = await db.tickets.count_documents({"event_id": e["id"], "status": {"$ne": "cancelled"}})
+            e["tickets_remaining"] = e["ticket_quota"] - sold
+        else:
+            e["tickets_remaining"] = None
+    return events
+
+@api_router.get("/events/featured")
+async def get_featured_event():
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    event = await db.events.find_one(
+        {"is_published": True, "date": {"$gte": now}},
+        {"_id": 0}
+    )
+    if not event:
+        return None
+    if event.get("ticket_quota", 0) > 0:
+        sold = await db.tickets.count_documents({"event_id": event["id"], "status": {"$ne": "cancelled"}})
+        event["tickets_remaining"] = event["ticket_quota"] - sold
+    return event
+
+@api_router.get("/events/{event_id}")
+async def get_event(event_id: str):
+    event = await db.events.find_one({"id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event nicht gefunden")
+    if event.get("ticket_quota", 0) > 0:
+        sold = await db.tickets.count_documents({"event_id": event["id"], "status": {"$ne": "cancelled"}})
+        event["tickets_remaining"] = event["ticket_quota"] - sold
+    else:
+        event["tickets_remaining"] = None
+    return event
+
+# Admin: CRUD events
+@api_router.get("/admin/events")
+async def admin_get_events(username: str = Depends(verify_admin)):
+    events = await db.events.find({}, {"_id": 0}).sort("date", -1).to_list(200)
+    for e in events:
+        sold = await db.tickets.count_documents({"event_id": e["id"], "status": {"$ne": "cancelled"}})
+        e["tickets_sold"] = sold
+    return events
+
+@api_router.post("/admin/events")
+async def admin_create_event(event: EventCreate, username: str = Depends(verify_admin)):
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {"id": str(uuid.uuid4()), **event.model_dump(), "created_at": now, "updated_at": now}
+    await db.events.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+@api_router.put("/admin/events/{event_id}")
+async def admin_update_event(event_id: str, event: EventUpdate, username: str = Depends(verify_admin)):
+    update = {k: v for k, v in event.model_dump().items() if v is not None}
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.events.update_one({"id": event_id}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Event nicht gefunden")
+    return await db.events.find_one({"id": event_id}, {"_id": 0})
+
+@api_router.delete("/admin/events/{event_id}")
+async def admin_delete_event(event_id: str, username: str = Depends(verify_admin)):
+    await db.events.delete_one({"id": event_id})
+    await db.tickets.delete_many({"event_id": event_id})
+    return {"status": "deleted"}
+
+# Payment settings
+@api_router.get("/admin/payment-settings")
+async def get_payment_settings(username: str = Depends(verify_admin)):
+    settings = await db.payment_settings.find_one({"id": "default"}, {"_id": 0})
+    if not settings:
+        settings = {
+            "id": "default", "bank_name": "", "account_holder": "",
+            "iban": "", "bic": "", "reference_prefix": "HEADLOCK-",
+            "additional_info_de": "", "additional_info_en": ""
+        }
+        await db.payment_settings.insert_one(settings)
+    return {k: v for k, v in settings.items() if k != "_id"}
+
+@api_router.put("/admin/payment-settings")
+async def update_payment_settings(data: PaymentSettingsUpdate, username: str = Depends(verify_admin)):
+    update = {k: v for k, v in data.model_dump().items() if v is not None}
+    await db.payment_settings.update_one({"id": "default"}, {"$set": update}, upsert=True)
+    return await db.payment_settings.find_one({"id": "default"}, {"_id": 0})
+
+# Public payment settings (for checkout page, only non-sensitive fields)
+@api_router.get("/payment-info")
+async def get_public_payment_info():
+    settings = await db.payment_settings.find_one({"id": "default"}, {"_id": 0})
+    if not settings:
+        return {"bank_name": "", "account_holder": "", "iban": "", "bic": "", "reference_prefix": "HEADLOCK-"}
+    return {
+        "bank_name": settings.get("bank_name", ""),
+        "account_holder": settings.get("account_holder", ""),
+        "iban": settings.get("iban", ""),
+        "bic": settings.get("bic", ""),
+        "reference_prefix": settings.get("reference_prefix", "HEADLOCK-"),
+        "additional_info_de": settings.get("additional_info_de", ""),
+        "additional_info_en": settings.get("additional_info_en", "")
+    }
+
+# Ticket reservation
+@api_router.post("/tickets/reserve")
+async def reserve_ticket(reservation: TicketReservation):
+    event = await db.events.find_one({"id": reservation.event_id, "is_published": True}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event nicht gefunden")
+    # Check quota
+    if event.get("ticket_quota", 0) > 0:
+        sold = await db.tickets.count_documents({"event_id": event["id"], "status": {"$ne": "cancelled"}})
+        if sold + reservation.quantity > event["ticket_quota"]:
+            raise HTTPException(status_code=400, detail="Nicht genügend Tickets verfügbar")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    tickets = []
+    for _ in range(reservation.quantity):
+        ticket_code = f"HQ-{uuid.uuid4().hex[:8].upper()}"
+        ticket = {
+            "id": str(uuid.uuid4()), "event_id": reservation.event_id,
+            "ticket_code": ticket_code,
+            "customer_name": reservation.customer_name,
+            "customer_email": reservation.customer_email,
+            "customer_phone": reservation.customer_phone,
+            "payment_method": reservation.payment_method,
+            "status": "reserved", "price": event.get("ticket_price", 0),
+            "is_checked_in": False, "checked_in_at": None,
+            "created_at": now
+        }
+        await db.tickets.insert_one(ticket)
+        tickets.append({k: v for k, v in ticket.items() if k != "_id"})
+    
+    # Send email
+    if reservation.payment_method == "transfer":
+        settings = await db.payment_settings.find_one({"id": "default"}, {"_id": 0}) or {}
+        ref = f"{settings.get('reference_prefix', 'HEADLOCK-')}{tickets[0]['ticket_code']}"
+        total = event.get("ticket_price", 0) * reservation.quantity
+        email_html = (
+            f"<h2>Deine Ticket-Reservierung bei Headlock Headquarter</h2>"
+            f"<p>Hallo {reservation.customer_name},</p>"
+            f"<p>Vielen Dank für deine Reservierung für <b>{event['title_de']}</b> am <b>{event['date']}</b>.</p>"
+            f"<h3>Überweisungsdaten</h3>"
+            f"<table style='border-collapse:collapse'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#888'>Empfänger:</td><td><b>{settings.get('account_holder','')}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#888'>Bank:</td><td>{settings.get('bank_name','')}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#888'>IBAN:</td><td><b>{settings.get('iban','')}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#888'>BIC:</td><td>{settings.get('bic','')}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#888'>Betrag:</td><td><b>{total:.2f} EUR</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#888'>Verwendungszweck:</td><td><b>{ref}</b></td></tr>"
+            f"</table>"
+            f"{'<p>' + settings.get('additional_info_de','') + '</p>' if settings.get('additional_info_de') else ''}"
+            f"<p>Dein(e) Ticket-Code(s): <b>{', '.join(t['ticket_code'] for t in tickets)}</b></p>"
+            f"<p>Bitte überweise den Betrag innerhalb von 7 Tagen.</p>"
+            f"<p>Dein Headlock Headquarter Team</p>"
+        )
+        await send_email(reservation.customer_email, f"Ticket-Reservierung: {event['title_de']}", email_html)
+    else:
+        email_html = (
+            f"<h2>Deine Ticket-Reservierung bei Headlock Headquarter</h2>"
+            f"<p>Hallo {reservation.customer_name},</p>"
+            f"<p>Vielen Dank für deine Reservierung für <b>{event['title_de']}</b> am <b>{event['date']}</b>.</p>"
+            f"<p>Du hast <b>Abendkasse</b> als Zahlungsmethode gewählt. Bitte bezahle vor Ort.</p>"
+            f"<p>Dein(e) Ticket-Code(s): <b>{', '.join(t['ticket_code'] for t in tickets)}</b></p>"
+            f"<p>Dein Headlock Headquarter Team</p>"
+        )
+        await send_email(reservation.customer_email, f"Ticket-Reservierung: {event['title_de']}", email_html)
+    
+    return {"tickets": tickets, "event": event}
+
+# PDF Ticket download
+@api_router.get("/tickets/{ticket_id}/pdf")
+async def download_ticket_pdf(ticket_id: str):
+    ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+    event = await db.events.find_one({"id": ticket["event_id"]}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event nicht gefunden")
+    
+    buf = io.BytesIO()
+    c = PDFCanvas(buf, pagesize=A4)
+    w, h = A4
+    
+    # Background
+    c.setFillColor(HexColor("#050505"))
+    c.rect(0, 0, w, h, fill=1)
+    
+    # Gold header bar
+    c.setFillColor(HexColor("#d4af37"))
+    c.rect(0, h - 100, w, 100, fill=1)
+    c.setFillColor(HexColor("#050505"))
+    c.setFont("Helvetica-Bold", 28)
+    c.drawString(30, h - 55, "HEADLOCK HEADQUARTER")
+    c.setFont("Helvetica", 14)
+    c.drawString(30, h - 80, "Catch- & Wrestlingverein Hannover e.V.")
+    
+    # Event title
+    c.setFillColor(HexColor("#d4af37"))
+    c.setFont("Helvetica-Bold", 22)
+    c.drawString(30, h - 150, event.get("title_de", "Event"))
+    
+    # Event details
+    c.setFillColor(HexColor("#ffffff"))
+    c.setFont("Helvetica", 13)
+    y = h - 185
+    details = [
+        ("Datum:", event.get("date", "")),
+        ("Uhrzeit:", event.get("time", "")),
+        ("Ort:", event.get("location", "")),
+    ]
+    for label, value in details:
+        c.setFillColor(HexColor("#888888"))
+        c.drawString(30, y, label)
+        c.setFillColor(HexColor("#ffffff"))
+        c.drawString(110, y, value)
+        y -= 22
+    
+    # Ticket info
+    y -= 15
+    c.setFillColor(HexColor("#d4af37"))
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(30, y, "TICKET")
+    y -= 25
+    ticket_details = [
+        ("Name:", ticket.get("customer_name", "")),
+        ("Code:", ticket.get("ticket_code", "")),
+        ("Preis:", f"{ticket.get('price', 0):.2f} EUR"),
+        ("Zahlung:", "Abendkasse" if ticket.get("payment_method") == "box_office" else "Überweisung"),
+    ]
+    for label, value in ticket_details:
+        c.setFillColor(HexColor("#888888"))
+        c.setFont("Helvetica", 12)
+        c.drawString(30, y, label)
+        c.setFillColor(HexColor("#ffffff"))
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(110, y, value)
+        y -= 20
+    
+    # QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    qr.add_data(ticket["ticket_code"])
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    qr_buf = io.BytesIO()
+    qr_img.save(qr_buf, format="PNG")
+    qr_buf.seek(0)
+    c.drawImage(ImageReader(qr_buf), w - 180, h - 340, 140, 140)
+    
+    # Footer
+    c.setFillColor(HexColor("#d4af37"))
+    c.rect(0, 0, w, 40, fill=1)
+    c.setFillColor(HexColor("#050505"))
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(w / 2, 15, "Bitte bringe dieses Ticket ausgedruckt oder digital mit.")
+    
+    c.save()
+    buf.seek(0)
+    
+    return StreamingResponse(
+        buf, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=ticket-{ticket['ticket_code']}.pdf"}
+    )
+
+# QR code validation endpoint
+async def verify_ticket_scanner(user: dict = Depends(get_current_user)):
+    if user["role"] not in ["admin", "ticket_scanner"]:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    return user
+
+@api_router.post("/tickets/validate/{ticket_code}")
+async def validate_ticket(ticket_code: str, user: dict = Depends(verify_ticket_scanner)):
+    ticket = await db.tickets.find_one({"ticket_code": ticket_code}, {"_id": 0})
+    if not ticket:
+        return {"valid": False, "message": "Ticket nicht gefunden", "ticket": None}
+    event = await db.events.find_one({"id": ticket["event_id"]}, {"_id": 0})
+    if ticket.get("status") == "cancelled":
+        return {"valid": False, "message": "Ticket wurde storniert", "ticket": ticket, "event": event}
+    if ticket.get("is_checked_in"):
+        return {"valid": False, "message": f"Bereits eingecheckt am {ticket.get('checked_in_at', '')}", "ticket": ticket, "event": event}
+    # Check in
+    now = datetime.now(timezone.utc).isoformat()
+    await db.tickets.update_one(
+        {"ticket_code": ticket_code},
+        {"$set": {"is_checked_in": True, "checked_in_at": now}}
+    )
+    ticket["is_checked_in"] = True
+    ticket["checked_in_at"] = now
+    return {"valid": True, "message": "Ticket gültig - Eingecheckt!", "ticket": ticket, "event": event}
+
+# Admin: get all tickets for an event
+@api_router.get("/admin/events/{event_id}/tickets")
+async def admin_get_event_tickets(event_id: str, username: str = Depends(verify_admin)):
+    tickets = await db.tickets.find({"event_id": event_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return tickets
+
+# Admin: cancel a ticket
+@api_router.put("/admin/tickets/{ticket_id}/cancel")
+async def admin_cancel_ticket(ticket_id: str, username: str = Depends(verify_admin)):
+    result = await db.tickets.update_one({"id": ticket_id}, {"$set": {"status": "cancelled"}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+    return {"status": "cancelled"}
+
 # ========== REMINDER SYSTEM ==========
 
 async def check_and_send_reminders():
@@ -1198,7 +1556,7 @@ ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
 @api_router.post("/admin/upload/{category}")
 async def upload_image(category: str, file: UploadFile = File(...), username: str = Depends(verify_admin)):
-    if category not in ['gallery', 'trainers', 'instagram', 'pages', 'profiles']:
+    if category not in ['gallery', 'trainers', 'instagram', 'pages', 'profiles', 'events']:
         raise HTTPException(status_code=400, detail="Invalid category")
     
     content = await file.read()

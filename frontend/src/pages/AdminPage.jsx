@@ -12,9 +12,12 @@ import { SettingsManager } from '../components/admin/SettingsManager';
 import { InstagramManager } from '../components/admin/InstagramManager';
 import { UsersManager } from '../components/admin/UsersManager';
 import { AdminSessionsManager } from '../components/admin/AdminSessionsManager';
+import { EventsManager } from '../components/admin/EventsManager';
+import { PaymentSettings } from '../components/admin/PaymentSettings';
 import {
   Users, Calendar, Image, Mail, Settings, LogOut, Clock,
-  LayoutDashboard, Menu, X, Instagram, FileText, Layout, UserPlus, ClipboardList
+  LayoutDashboard, Menu, X, Instagram, FileText, Layout, UserPlus, ClipboardList,
+  Ticket, CreditCard
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -138,6 +141,8 @@ export default function AdminPage() {
 
   const navItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { id: 'events', icon: Ticket, label: language === 'de' ? 'Veranstaltungen' : 'Events' },
+    { id: 'payment', icon: CreditCard, label: language === 'de' ? 'Zahlungseinst.' : 'Payment Settings' },
     { id: 'users', icon: UserPlus, label: language === 'de' ? 'Benutzer' : 'Users' },
     { id: 'sessions', icon: ClipboardList, label: language === 'de' ? 'Training-Sessions' : 'Training Sessions' },
     { id: 'homepage', icon: Layout, label: 'Homepage' },
@@ -215,6 +220,12 @@ export default function AdminPage() {
             <>
               {activeTab === 'dashboard' && (
                 <AdminDashboard trainers={trainers} bookings={bookings} contacts={contacts} gallery={gallery} language={language} onSeedData={seedData} />
+              )}
+              {activeTab === 'events' && (
+                <EventsManager getAuthHeaders={getAuthHeader} />
+              )}
+              {activeTab === 'payment' && (
+                <PaymentSettings getAuthHeaders={getAuthHeader} />
               )}
               {activeTab === 'users' && (
                 <UsersManager getAuthHeader={getAuthHeader} language={language} />
